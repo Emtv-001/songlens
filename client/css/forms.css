@@ -1,0 +1,72 @@
+.card {
+  background: var(--surface);
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 2rem;
+  border-radius: 12px;
+}
+
+.card h1 {
+  margin-top: 0;
+}
+
+.field {
+  margin-bottom: 1rem;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.field input {
+  width: 100%;
+  padding: 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--soft-grey);
+  background: var(--midnight);
+  color: var(--ivory);
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.field input:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 1px;
+}
+
+.form-message {
+  min-height: 1.4rem;
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.form-message.error {
+  color: var(--error);
+}
+
+.form-message.success {
+  color: var(--success);
+}
+
+.card .btn {
+  width: 100%;
+}
+
+.card .alt {
+  margin-top: 1rem;
+  text-align: center;
+  color: var(--soft-grey);
+  font-size: 0.9rem;
+}
+
+.card .alt a {
+  color: var(--teal);
+}
+
+.account-line {
+  color: var(--soft-grey);
+  margin: 0.2rem 0;
+}

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Log in — SongLens</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/forms.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" class="brand">Song<span>Lens</span></a>
+      <nav class="nav">
+        <a href="/register.html">Sign up</a>
+      </nav>
+    </header>
+
+    <main>
+      <div class="card">
+        <h1>Welcome back</h1>
+        <form id="login-form" novalidate>
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required />
+          </div>
+          <p class="form-message" id="form-message" role="alert"></p>
+          <button class="btn" type="submit">Log in</button>
+        </form>
+        <p class="alt">New here? <a href="/register.html">Create an account</a></p>
+      </div>
+    </main>
+
+    <footer class="site-footer">© 2026 EMTV TECH. All rights reserved.</footer>
+    <script src="/js/auth.js"></script>
+  </body>
+</html>
