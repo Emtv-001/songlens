@@ -28,6 +28,7 @@ app.get('/api/v1/health', (req, res) => {
 app.use('/api/v1/auth/login', authLimiter);
 app.use('/api/v1/auth/register', authLimiter);
 app.use('/api/v1/auth', require('./modules/auth/auth.routes'));
+app.use('/api/v1/songs', require('./modules/songs/songs.routes'));
 
 app.use(notFound);
 app.use(errorHandler);
