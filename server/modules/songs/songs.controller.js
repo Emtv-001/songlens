@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { validationResult } = require('express-validator');
 const Song = require('../../models/Song');
 
 const HIDDEN_FIELDS = '-audio.storageKey';
@@ -22,6 +23,19 @@ async function listSongs(req, res, next) {
     ]);
 
     res.json({ songs, page, limit, total });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /songs/mine  (the logged-in user's own songs, private or not)
+async function listMine(req, res, next) {
+  try {
+    const songs = await Song.find({ ownerId: req.user._id })
+      .select(HIDDEN_FIELDS)
+      .sort({ createdAt: -1 })
+      .limit(100);
+    res.json({ songs });
   } catch (err) {
     next(err);
   }
@@ -53,4 +67,30 @@ async function getSong(req, res, next) {
   }
 }
 
-module.exports = { listSongs, getSong };
+async function createSong(req, res, next) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        errors: errors.array().map((e) => ({ field: e.path, message: e.msg })),
+      });
+    }
+
+    const { title, artist, description } = req.body;
+
+    const song = await Song.create({
+      title,
+      artist,
+      description,
+      sourceType: 'user_upload',
+      ownerId: req.user._id,
+      visibility: 'private',
+    });
+
+    res.status(201).json({ song });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listSongs, listMine, getSong, createSong };

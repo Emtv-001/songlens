@@ -18,19 +18,27 @@ function makeActions(song) {
   const actions = document.createElement('div');
   actions.className = 'card-actions';
 
+  const open = document.createElement('a');
+  open.className = 'card-link';
+  open.href = `/play.html?id=${encodeURIComponent(song._id)}`;
+  open.textContent = 'Open';
+  actions.appendChild(open);
+  actions.appendChild(document.createTextNode(' '));
+
   if (!state.loggedIn) {
     const hint = document.createElement('span');
     hint.className = 'link-hint';
     const link = document.createElement('a');
     link.href = '/login.html';
     link.textContent = 'Log in';
-    hint.append(link, ' to save songs');
+    hint.append(' · ', link, ' to save songs');
     actions.appendChild(hint);
     return actions;
   }
 
   const button = document.createElement('button');
   button.type = 'button';
+  button.style.marginLeft = '0.6rem';
 
   function render() {
     const saved = state.savedIds.has(song._id);

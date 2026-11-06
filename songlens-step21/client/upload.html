@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload — SongLens</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/forms.css" />
+    <link rel="stylesheet" href="/css/songs.css" />
+    <link rel="stylesheet" href="/css/library.css" />
+    <link rel="stylesheet" href="/css/player.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" class="brand">Song<span>Lens</span></a>
+      <nav class="nav">
+        <a href="/songs.html">Library</a>
+        <a href="/library.html">My library</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/account.html">Account</a>
+      </nav>
+    </header>
+
+    <main>
+      <h1 class="page-title">Upload a recording</h1>
+
+      <section class="upload-card">
+        <form id="upload-form" novalidate>
+          <div class="field">
+            <label for="title">Title</label>
+            <input id="title" name="title" type="text" maxlength="200" required />
+          </div>
+          <div class="field">
+            <label for="artist">Artist (optional)</label>
+            <input id="artist" name="artist" type="text" maxlength="200" />
+          </div>
+          <div class="field">
+            <label for="file">Audio file (MP3, WAV, M4A, OGG or FLAC, up to 50 MB)</label>
+            <input id="file" name="file" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" required />
+          </div>
+          <p class="rights-note">
+            Your upload stays private. Only upload recordings you have the right to use.
+          </p>
+          <progress class="progress" id="progress" value="0" max="100" hidden></progress>
+          <p class="form-message" id="form-message" role="alert"></p>
+          <button class="btn" id="submit-btn" type="submit">Upload</button>
+        </form>
+      </section>
+
+      <h2>My uploads</h2>
+      <p class="status-text" id="status" role="status"></p>
+      <ul class="song-grid" id="song-grid"></ul>
+    </main>
+
+    <footer class="site-footer">© 2026 EMTV TECH. All rights reserved.</footer>
+    <script src="/js/library-api.js"></script>
+    <script src="/js/upload.js"></script>
+  </body>
+</html>

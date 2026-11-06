@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Song library — SongLens</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/songs.css" />
+    <link rel="stylesheet" href="/css/library.css" />
+    <link rel="stylesheet" href="/css/player.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" class="brand">Song<span>Lens</span></a>
+      <nav class="nav">
+        <a href="/songs.html">Library</a>
+        <a href="/library.html">My library</a>
+        <a href="/upload.html">Upload</a>
+        <a href="/account.html">Account</a>
+      </nav>
+    </header>
+
+    <main>
+      <h1 class="page-title">Song library</h1>
+
+      <form class="search-bar" id="search-form" role="search">
+        <label for="search-input" hidden>Search songs</label>
+        <input id="search-input" type="search" placeholder="Search by title or artist" />
+        <button class="btn" type="submit">Search</button>
+      </form>
+
+      <p class="status-text" id="status" role="status"></p>
+      <ul class="song-grid" id="song-grid"></ul>
+
+      <div class="pager" id="pager" hidden>
+        <button class="btn" id="prev-btn" type="button">Previous</button>
+        <span class="status-text" id="page-info"></span>
+        <button class="btn" id="next-btn" type="button">Next</button>
+      </div>
+    </main>
+
+    <footer class="site-footer">© 2026 EMTV TECH. All rights reserved.</footer>
+    <script src="/js/library-api.js"></script>
+    <script src="/js/songs.js"></script>
+  </body>
+</html>
