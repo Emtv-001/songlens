@@ -1,0 +1,28 @@
+.card-actions {
+  margin-top: 0.9rem;
+}
+
+.btn-small {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--teal);
+  border: 2px solid var(--teal);
+}
+
+.btn-outline:hover {
+  background: var(--teal);
+  color: var(--midnight);
+}
+
+.link-hint {
+  color: var(--soft-grey);
+  font-size: 0.85rem;
+}
+
+.link-hint a {
+  color: var(--teal);
+}
