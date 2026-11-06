@@ -1,0 +1,78 @@
+.page-title {
+  margin-top: 0;
+}
+
+.search-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--soft-grey);
+  background: var(--surface);
+  color: var(--ivory);
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.search-bar input:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 1px;
+}
+
+.status-text {
+  color: var(--soft-grey);
+}
+
+.status-text.error {
+  color: var(--error);
+}
+
+.song-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.song-card {
+  background: var(--surface);
+  padding: 1.2rem;
+  border-radius: 12px;
+  border-left: 4px solid var(--teal);
+}
+
+.song-card h2 {
+  margin: 0 0 0.2rem;
+  font-size: 1.15rem;
+}
+
+.song-card .artist {
+  margin: 0 0 0.6rem;
+  color: var(--coral);
+  font-size: 0.9rem;
+}
+
+.song-card .desc {
+  margin: 0;
+  color: var(--soft-grey);
+  font-size: 0.9rem;
+}
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+}
+
+.pager .btn[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
