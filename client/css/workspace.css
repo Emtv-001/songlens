@@ -1,0 +1,53 @@
+.now-panel {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr 1fr;
+  margin: 1rem 0;
+}
+
+.now-box {
+  background: var(--midnight);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+}
+
+.now-box .label {
+  margin: 0;
+  color: var(--soft-grey);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.now-box .value {
+  margin: 0.2rem 0 0;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 800;
+}
+
+.now-box .value.chord {
+  color: var(--teal);
+}
+
+.now-box.wide {
+  grid-column: 1 / -1;
+}
+
+.now-box .lyric {
+  min-height: 2rem;
+  margin: 0.3rem 0 0;
+  font-size: 1.4rem;
+  color: var(--coral);
+}
+
+.hint {
+  color: var(--warning);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 520px) {
+  .now-panel {
+    grid-template-columns: 1fr;
+  }
+}
