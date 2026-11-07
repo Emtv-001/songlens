@@ -46,7 +46,7 @@
           </select>
         </div>
 
-        <div class="now-panel" aria-live="off">
+        <div class="now-panel">
           <div class="now-box">
             <p class="label">Time</p>
             <p class="value" id="now-time">0:00.0</p>
@@ -55,11 +55,13 @@
             <p class="label">Chord</p>
             <p class="value chord" id="now-chord">—</p>
           </div>
-          <div class="now-box wide">
-            <p class="label">Lyrics</p>
-            <p class="lyric" id="now-lyric"></p>
-          </div>
         </div>
+
+        <h2 class="section-title">Chords</h2>
+        <div class="chord-strip" id="chord-strip" tabindex="0" aria-label="Chord timeline"></div>
+
+        <h2 class="section-title">Lyrics</h2>
+        <div class="lyrics-box" id="lyrics-box"></div>
 
         <p class="hint" id="timeline-hint" hidden>
           This song has no chords or lyrics yet. The editor for adding them comes in a later step.
@@ -70,6 +72,8 @@
     <footer class="site-footer">© 2026 EMTV TECH. All rights reserved.</footer>
     <script src="/js/clock.js"></script>
     <script src="/js/timeline-utils.js"></script>
+    <script src="/js/views/chord-view.js"></script>
+    <script src="/js/views/lyrics-view.js"></script>
     <script src="/js/workspace.js"></script>
   </body>
 </html>

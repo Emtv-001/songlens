@@ -30,15 +30,123 @@
   color: var(--teal);
 }
 
-.now-box.wide {
-  grid-column: 1 / -1;
+.section-title {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1rem;
+  color: var(--soft-grey);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.now-box .lyric {
-  min-height: 2rem;
-  margin: 0.3rem 0 0;
-  font-size: 1.4rem;
+.empty-note {
+  margin: 0;
+  padding: 1rem;
+  color: var(--soft-grey);
+}
+
+/* Chord timeline */
+.chord-strip {
+  position: relative;
+  overflow-x: auto;
+  background: var(--midnight);
+  border-radius: 12px;
+}
+
+.chord-track {
+  position: relative;
+  height: 84px;
+}
+
+.chord-block {
+  position: absolute;
+  top: 12px;
+  height: 60px;
+  padding: 0 0.4rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--indigo);
+  color: var(--white);
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.chord-block:hover {
+  background: #31509f;
+}
+
+.chord-block.active {
+  background: var(--teal);
+  color: var(--midnight);
+}
+
+.chord-block:focus-visible,
+.lyric-line:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 2px;
+}
+
+.chord-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: var(--coral);
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* Lyrics */
+.lyrics-box {
+  position: relative;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--midnight);
+  border-radius: 12px;
+  padding: 0.5rem;
+}
+
+.lyrics-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lyric-line {
+  display: flex;
+  gap: 0.8rem;
+  align-items: baseline;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--soft-grey);
+  font-family: inherit;
+  font-size: 1.1rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lyric-line:hover {
+  background: var(--surface);
+}
+
+.lyric-time {
+  flex: none;
+  font-size: 0.8rem;
+  color: var(--soft-grey);
+  font-variant-numeric: tabular-nums;
+}
+
+.lyrics-list li.active .lyric-line {
+  background: var(--surface);
   color: var(--coral);
+  font-weight: 600;
 }
 
 .hint {

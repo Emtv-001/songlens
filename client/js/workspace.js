@@ -6,7 +6,8 @@ const audio = document.getElementById('audio');
 const speed = document.getElementById('speed');
 const timeEl = document.getElementById('now-time');
 const chordEl = document.getElementById('now-chord');
-const lyricEl = document.getElementById('now-lyric');
+const chordStripEl = document.getElementById('chord-strip');
+const lyricsBoxEl = document.getElementById('lyrics-box');
 const hintEl = document.getElementById('timeline-hint');
 
 const songId = new URLSearchParams(window.location.search).get('id');
@@ -35,12 +36,21 @@ function fetchAudioUrl() {
   return fetchJson(`/api/v1/songs/${encodeURIComponent(songId)}/audio-url`).then((d) => d.url);
 }
 
-// A "view" is any component that reacts to the shared clock.
-// This first one just shows the time, the active chord and the active lyric line.
+function seekTo(seconds) {
+  audio.currentTime = seconds;
+}
+
+function showEmpty(container, message) {
+  const p = document.createElement('p');
+  p.className = 'empty-note';
+  p.textContent = message;
+  container.replaceChildren(p);
+}
+
+// Shows the current time and the active chord as big text.
 function createNowView() {
   let lastTime = '';
   let lastChord = null;
-  let lastLyric = null;
 
   return function render(state) {
     const timeText = TimelineUtils.formatTime(state.time);
@@ -57,13 +67,28 @@ function createNowView() {
           : TimelineUtils.chordSymbol(workspace.timeline.chords[chordIndex]);
       lastChord = chordIndex;
     }
-
-    const lyricIndex = TimelineUtils.findActiveIndex(workspace.timeline.lyrics, state.time);
-    if (lyricIndex !== lastLyric) {
-      lyricEl.textContent = lyricIndex === -1 ? '' : workspace.timeline.lyrics[lyricIndex].text;
-      lastLyric = lyricIndex;
-    }
   };
+}
+
+function buildViews() {
+  const { chords, lyrics } = workspace.timeline;
+  const clock = workspace.clock;
+
+  clock.subscribe(createNowView());
+
+  if (chords.length > 0) {
+    clock.subscribe(createChordView(chordStripEl, chords, seekTo).render);
+  } else {
+    showEmpty(chordStripEl, 'No chords yet.');
+  }
+
+  if (lyrics.length > 0) {
+    clock.subscribe(createLyricsView(lyricsBoxEl, lyrics, seekTo).render);
+  } else {
+    showEmpty(lyricsBoxEl, 'No lyrics yet.');
+  }
+
+  hintEl.hidden = chords.length > 0 || lyrics.length > 0;
 }
 
 async function init() {
@@ -91,11 +116,8 @@ async function init() {
     workspace.timeline = timelineData.timeline;
     workspace.canEdit = timelineData.canEdit;
 
-    const hasData = workspace.timeline.chords.length > 0 || workspace.timeline.lyrics.length > 0;
-    hintEl.hidden = hasData;
-
     workspace.clock = new PlaybackClock(audio);
-    workspace.clock.subscribe(createNowView());
+    buildViews();
 
     setStatus('');
     audio.src = await fetchAudioUrl();
