@@ -16,6 +16,10 @@ const metaEl = document.getElementById('song-meta');
 const romanEl = document.getElementById('now-roman');
 const solfaEl = document.getElementById('now-solfa');
 const minorBaseEl = document.getElementById('minor-base');
+const transposeDownEl = document.getElementById('transpose-down');
+const transposeUpEl = document.getElementById('transpose-up');
+const transposeResetEl = document.getElementById('transpose-reset');
+const transposeLabelEl = document.getElementById('transpose-label');
 
 const songId = new URLSearchParams(window.location.search).get('id');
 
@@ -25,7 +29,39 @@ const workspace = {
   canEdit: false,
   clock: null,
   unsubscribers: [],
+  transpose: 0, // semitones, display only
+  display: { chords: [], lyrics: [] }, // the timeline as shown (transposed copy)
 };
+
+// The views show a transposed copy. The stored timeline (and the editor) stay original.
+function refreshDisplay() {
+  workspace.display = Theory.transposeTimeline(workspace.timeline, workspace.transpose);
+}
+
+function updateTransposeUi() {
+  const n = workspace.transpose;
+  const original = workspace.timeline;
+  let text = n === 0 ? 'Original key' : `${n > 0 ? '+' : ''}${n} semitone${Math.abs(n) === 1 ? '' : 's'}`;
+
+  if (original.keyPc !== null && original.keyPc !== undefined) {
+    const modeText = original.mode ? ` ${original.mode}` : '';
+    const from = TimelineUtils.NOTE_NAMES[original.keyPc];
+    const to = TimelineUtils.NOTE_NAMES[workspace.display.keyPc];
+    text += n === 0 ? ` (${from}${modeText})` : ` (${from} → ${to}${modeText})`;
+  }
+
+  transposeLabelEl.textContent = text;
+  transposeDownEl.disabled = n <= -11;
+  transposeUpEl.disabled = n >= 11;
+  transposeResetEl.disabled = n === 0;
+}
+
+function setTranspose(semitones) {
+  workspace.transpose = Math.max(-11, Math.min(11, semitones));
+  refreshDisplay();
+  if (workspace.clock) buildViews();
+  else updateTransposeUi();
+}
 
 // "la" (la-based minor, the default) or "do" (do-based minor).
 function getMinorBase() {
@@ -84,10 +120,10 @@ function createNowView() {
       lastTime = timeText;
     }
 
-    const chordIndex = TimelineUtils.findActiveIndex(workspace.timeline.chords, state.time);
+    const chordIndex = TimelineUtils.findActiveIndex(workspace.display.chords, state.time);
     if (chordIndex !== lastChord) {
-      const { keyPc, mode } = workspace.timeline;
-      const chord = chordIndex === -1 ? null : workspace.timeline.chords[chordIndex];
+      const { keyPc, mode } = workspace.display;
+      const chord = chordIndex === -1 ? null : workspace.display.chords[chordIndex];
 
       chordEl.textContent = chord ? TimelineUtils.chordSymbol(chord) : '—';
 
@@ -108,7 +144,7 @@ function createNowView() {
 
 // Shows the key, tempo and time signature under the song title.
 function renderSongMeta() {
-  const t = workspace.timeline;
+  const t = workspace.display;
   const keyText =
     t.keyPc === null || t.keyPc === undefined
       ? 'not set'
@@ -142,15 +178,16 @@ function buildViews() {
   workspace.unsubscribers = [];
 
   renderSongMeta();
+  updateTransposeUi();
 
-  const { chords, lyrics } = workspace.timeline;
+  const { chords, lyrics } = workspace.display;
   const clock = workspace.clock;
   const add = (render) => workspace.unsubscribers.push(clock.subscribe(render));
 
   add(createNowView());
 
   if (chords.length > 0) {
-    const { keyPc, mode } = workspace.timeline;
+    const { keyPc, mode } = workspace.display;
     const romanFor = (chord) => Theory.romanNumeral(chord, keyPc, mode);
     add(createChordView(chordStripEl, chords, seekTo, romanFor).render);
   } else {
@@ -193,6 +230,7 @@ async function init() {
     const timelineData = await fetchJson(`/api/v1/songs/${encodeURIComponent(songId)}/timeline`);
     workspace.timeline = timelineData.timeline;
     workspace.canEdit = timelineData.canEdit;
+    refreshDisplay();
 
     workspace.clock = new PlaybackClock(audio);
     buildViews();
@@ -205,6 +243,7 @@ async function init() {
         timeline: workspace.timeline,
         onSaved: (saved) => {
           workspace.timeline = saved;
+          refreshDisplay();
           buildViews();
         },
       });
@@ -249,6 +288,10 @@ minorBaseEl.addEventListener('change', () => {
   saveMinorBase(minorBaseEl.value);
   if (workspace.clock) buildViews();
 });
+
+transposeDownEl.addEventListener('click', () => setTranspose(workspace.transpose - 1));
+transposeUpEl.addEventListener('click', () => setTranspose(workspace.transpose + 1));
+transposeResetEl.addEventListener('click', () => setTranspose(0));
 
 speed.addEventListener('change', () => {
   audio.playbackRate = parseFloat(speed.value);

@@ -78,7 +78,35 @@ const Theory = (() => {
       .map((tone) => solfege(tone.midi % 12, keyPc, mode, minorBase));
   }
 
-  return { romanNumeral, solfege, chordSolfege };
+  function transposePc(pc, semitones) {
+    return (((pc + semitones) % 12) + 12) % 12;
+  }
+
+  function transposeChord(chord, semitones) {
+    return {
+      ...chord,
+      root: transposePc(chord.root, semitones),
+      bass:
+        chord.bass === null || chord.bass === undefined
+          ? chord.bass
+          : transposePc(chord.bass, semitones),
+    };
+  }
+
+  // Returns a transposed copy for display. The stored timeline is never changed.
+  function transposeTimeline(timeline, semitones) {
+    if (!semitones) return timeline;
+    return {
+      ...timeline,
+      keyPc:
+        timeline.keyPc === null || timeline.keyPc === undefined
+          ? timeline.keyPc
+          : transposePc(timeline.keyPc, semitones),
+      chords: (timeline.chords || []).map((chord) => transposeChord(chord, semitones)),
+    };
+  }
+
+  return { romanNumeral, solfege, chordSolfege, transposeChord, transposeTimeline };
 })();
 
 if (typeof module !== 'undefined') module.exports = Theory;

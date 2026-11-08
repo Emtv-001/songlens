@@ -69,6 +69,17 @@
           </div>
         </div>
 
+        <div class="transpose-row">
+          <span class="transpose-title">Transpose</span>
+          <button type="button" id="transpose-down" aria-label="Transpose down one semitone">−</button>
+          <button type="button" id="transpose-up" aria-label="Transpose up one semitone">+</button>
+          <button type="button" id="transpose-reset" aria-label="Back to the original key">Original</button>
+          <span class="transpose-label" id="transpose-label" role="status">Original key</span>
+        </div>
+        <p class="transpose-note">
+          Display only. The recording keeps its original pitch, and your saved chords are not changed.
+        </p>
+
         <div class="solfa-row">
           <label for="minor-base">Solfège in minor keys</label>
           <select id="minor-base">

@@ -230,3 +230,55 @@
   color: var(--ivory);
   font-family: inherit;
 }
+.transpose-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+}
+
+.transpose-row .transpose-title {
+  color: var(--soft-grey);
+  font-size: 0.85rem;
+  margin-right: 0.3rem;
+}
+
+.transpose-row button {
+  min-width: 2.4rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--teal);
+  background: transparent;
+  color: var(--teal);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.transpose-row button:hover:not(:disabled) {
+  background: var(--teal);
+  color: var(--midnight);
+}
+
+.transpose-row button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.transpose-row button:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 2px;
+}
+
+.transpose-label {
+  font-weight: 600;
+  color: var(--ivory);
+}
+
+.transpose-note {
+  margin: 0 0 1rem;
+  color: var(--soft-grey);
+  font-size: 0.8rem;
+}
