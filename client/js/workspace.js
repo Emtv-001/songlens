@@ -7,6 +7,8 @@ const speed = document.getElementById('speed');
 const timeEl = document.getElementById('now-time');
 const chordEl = document.getElementById('now-chord');
 const chordStripEl = document.getElementById('chord-strip');
+const pianoEl = document.getElementById('piano');
+const pianoNotesEl = document.getElementById('piano-notes');
 const lyricsBoxEl = document.getElementById('lyrics-box');
 const hintEl = document.getElementById('timeline-hint');
 
@@ -81,6 +83,9 @@ function buildViews() {
   } else {
     showEmpty(chordStripEl, 'No chords yet.');
   }
+
+  // The piano is always shown so it can be explored even without chord data.
+  clock.subscribe(createPianoView(pianoEl, pianoNotesEl, chords).render);
 
   if (lyrics.length > 0) {
     clock.subscribe(createLyricsView(lyricsBoxEl, lyrics, seekTo).render);

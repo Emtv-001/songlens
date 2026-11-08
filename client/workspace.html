@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="/css/songs.css" />
     <link rel="stylesheet" href="/css/player.css" />
     <link rel="stylesheet" href="/css/workspace.css" />
+    <link rel="stylesheet" href="/css/piano.css" />
   </head>
   <body>
     <header class="site-header">
@@ -60,6 +61,10 @@
         <h2 class="section-title">Chords</h2>
         <div class="chord-strip" id="chord-strip" tabindex="0" aria-label="Chord timeline"></div>
 
+        <h2 class="section-title">Piano</h2>
+        <div class="piano-wrap" id="piano"></div>
+        <p class="piano-notes" id="piano-notes"></p>
+
         <h2 class="section-title">Lyrics</h2>
         <div class="lyrics-box" id="lyrics-box"></div>
 
@@ -73,6 +78,7 @@
     <script src="/js/clock.js"></script>
     <script src="/js/timeline-utils.js"></script>
     <script src="/js/views/chord-view.js"></script>
+    <script src="/js/views/piano-view.js"></script>
     <script src="/js/views/lyrics-view.js"></script>
     <script src="/js/workspace.js"></script>
   </body>

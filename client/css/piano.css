@@ -1,0 +1,66 @@
+.piano-wrap {
+  background: var(--midnight);
+  border-radius: 12px;
+  padding: 0.75rem;
+  overflow-x: auto;
+}
+
+.piano-svg {
+  display: block;
+  width: 100%;
+  min-width: 420px;
+  max-width: 720px;
+  margin: 0 auto;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.piano-svg .key {
+  cursor: pointer;
+}
+
+.piano-svg .key.white {
+  fill: var(--ivory);
+  stroke: #8a93a8;
+  stroke-width: 1;
+}
+
+.piano-svg .key.black {
+  fill: #0b0f1d;
+  stroke: #000;
+  stroke-width: 1;
+}
+
+.piano-svg .key.chord {
+  fill: var(--teal);
+}
+
+.piano-svg .key.black.chord {
+  fill: #2e8a82;
+}
+
+.piano-svg .key.root {
+  fill: var(--coral);
+}
+
+.piano-svg .key.bass {
+  fill: var(--warning);
+}
+
+.piano-svg .key.pressed {
+  opacity: 0.7;
+}
+
+.piano-svg .key-label {
+  fill: #55607a;
+  font-size: 9px;
+  font-family: 'Inter', sans-serif;
+  pointer-events: none;
+}
+
+.piano-notes {
+  margin: 0.6rem 0 0;
+  color: var(--soft-grey);
+  font-size: 0.95rem;
+  min-height: 1.4rem;
+}
