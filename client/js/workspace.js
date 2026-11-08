@@ -11,6 +11,8 @@ const pianoEl = document.getElementById('piano');
 const pianoNotesEl = document.getElementById('piano-notes');
 const lyricsBoxEl = document.getElementById('lyrics-box');
 const hintEl = document.getElementById('timeline-hint');
+const editorEl = document.getElementById('editor');
+const metaEl = document.getElementById('song-meta');
 
 const songId = new URLSearchParams(window.location.search).get('id');
 
@@ -19,6 +21,7 @@ const workspace = {
   timeline: { chords: [], lyrics: [] },
   canEdit: false,
   clock: null,
+  unsubscribers: [],
 };
 
 function setStatus(text, isError) {
@@ -72,28 +75,65 @@ function createNowView() {
   };
 }
 
+// Shows the key, tempo and time signature under the song title.
+function renderSongMeta() {
+  const t = workspace.timeline;
+  const keyText =
+    t.keyPc === null || t.keyPc === undefined
+      ? 'not set'
+      : `${TimelineUtils.NOTE_NAMES[t.keyPc]}${t.mode ? ` ${t.mode}` : ''}`;
+  const tempoText = t.bpm ? `${t.bpm} BPM` : 'not set';
+  const items = [
+    ['Key', keyText],
+    ['Tempo', tempoText],
+    ['Time', t.timeSignature || '4/4'],
+  ];
+
+  metaEl.replaceChildren(
+    ...items.map(([label, value]) => {
+      const chip = document.createElement('span');
+      chip.className = 'meta-chip';
+      const name = document.createElement('span');
+      name.className = 'meta-label';
+      name.textContent = label;
+      const val = document.createElement('strong');
+      val.textContent = value;
+      chip.append(name, val);
+      return chip;
+    })
+  );
+}
+
+// Builds every view and subscribes it to the shared clock.
+// Safe to call again after the timeline changes (for example after saving an edit).
 function buildViews() {
+  workspace.unsubscribers.forEach((unsubscribe) => unsubscribe());
+  workspace.unsubscribers = [];
+
+  renderSongMeta();
+
   const { chords, lyrics } = workspace.timeline;
   const clock = workspace.clock;
+  const add = (render) => workspace.unsubscribers.push(clock.subscribe(render));
 
-  clock.subscribe(createNowView());
+  add(createNowView());
 
   if (chords.length > 0) {
-    clock.subscribe(createChordView(chordStripEl, chords, seekTo).render);
+    add(createChordView(chordStripEl, chords, seekTo).render);
   } else {
     showEmpty(chordStripEl, 'No chords yet.');
   }
 
   // The piano is always shown so it can be explored even without chord data.
-  clock.subscribe(createPianoView(pianoEl, pianoNotesEl, chords).render);
+  add(createPianoView(pianoEl, pianoNotesEl, chords).render);
 
   if (lyrics.length > 0) {
-    clock.subscribe(createLyricsView(lyricsBoxEl, lyrics, seekTo).render);
+    add(createLyricsView(lyricsBoxEl, lyrics, seekTo).render);
   } else {
     showEmpty(lyricsBoxEl, 'No lyrics yet.');
   }
 
-  hintEl.hidden = chords.length > 0 || lyrics.length > 0;
+  hintEl.hidden = chords.length > 0 || lyrics.length > 0 || !workspace.canEdit;
 }
 
 async function init() {
@@ -123,6 +163,19 @@ async function init() {
 
     workspace.clock = new PlaybackClock(audio);
     buildViews();
+
+    if (workspace.canEdit) {
+      createEditor({
+        container: editorEl,
+        audio,
+        songId,
+        timeline: workspace.timeline,
+        onSaved: (saved) => {
+          workspace.timeline = saved;
+          buildViews();
+        },
+      });
+    }
 
     setStatus('');
     audio.src = await fetchAudioUrl();

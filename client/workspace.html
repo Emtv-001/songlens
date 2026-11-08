@@ -12,9 +12,11 @@
     />
     <link rel="stylesheet" href="/css/styles.css" />
     <link rel="stylesheet" href="/css/songs.css" />
+    <link rel="stylesheet" href="/css/library.css" />
     <link rel="stylesheet" href="/css/player.css" />
     <link rel="stylesheet" href="/css/workspace.css" />
     <link rel="stylesheet" href="/css/piano.css" />
+    <link rel="stylesheet" href="/css/editor.css" />
   </head>
   <body>
     <header class="site-header">
@@ -33,6 +35,7 @@
       <section class="player-card" id="workspace" hidden>
         <h1 id="song-title"></h1>
         <p class="artist" id="song-artist"></p>
+        <p class="song-meta" id="song-meta"></p>
 
         <audio id="audio" controls preload="metadata"></audio>
 
@@ -69,8 +72,10 @@
         <div class="lyrics-box" id="lyrics-box"></div>
 
         <p class="hint" id="timeline-hint" hidden>
-          This song has no chords or lyrics yet. The editor for adding them comes in a later step.
+          This song has no chords or lyrics yet. Open "Edit chords and lyrics" below to add them.
         </p>
+
+        <section id="editor" hidden></section>
       </section>
     </main>
 
@@ -80,6 +85,7 @@
     <script src="/js/views/chord-view.js"></script>
     <script src="/js/views/piano-view.js"></script>
     <script src="/js/views/lyrics-view.js"></script>
+    <script src="/js/editor.js"></script>
     <script src="/js/workspace.js"></script>
   </body>
 </html>

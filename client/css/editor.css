@@ -1,0 +1,177 @@
+.editor-panel {
+  margin-top: 1.5rem;
+  background: var(--midnight);
+  border-radius: 12px;
+  padding: 0.75rem 1rem 1rem;
+}
+
+.editor-panel > summary {
+  cursor: pointer;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--teal);
+  padding: 0.3rem 0;
+}
+
+.editor-panel > summary:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 2px;
+}
+
+.editor-help {
+  color: var(--soft-grey);
+  font-size: 0.9rem;
+}
+
+.editor-group {
+  border: 1px solid #2b3858;
+  border-radius: 10px;
+  margin: 1rem 0;
+  padding: 0.6rem 0.8rem 0.8rem;
+}
+
+.editor-group legend {
+  padding: 0 0.4rem;
+  color: var(--soft-grey);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.editor-settings {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--soft-grey);
+}
+
+.editor-field > span:not(:first-child) {
+  display: block;
+}
+
+.editor-panel select,
+.editor-panel input[type='number'],
+.editor-panel input[type='text'] {
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--soft-grey);
+  background: var(--surface);
+  color: var(--ivory);
+  font-family: inherit;
+  font-size: 0.95rem;
+  max-width: 100%;
+}
+
+.editor-panel select:focus-visible,
+.editor-panel input:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 1px;
+}
+
+.editor-table-wrap {
+  overflow-x: auto;
+}
+
+.editor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.editor-table th {
+  text-align: left;
+  color: var(--soft-grey);
+  font-weight: 600;
+  padding: 0.3rem 0.4rem;
+  white-space: nowrap;
+}
+
+.editor-table td {
+  padding: 0.3rem 0.4rem;
+  vertical-align: middle;
+}
+
+.time-cell {
+  white-space: nowrap;
+}
+
+.time-cell input[type='number'] {
+  width: 5.2rem;
+}
+
+.lyric-input {
+  width: 100%;
+  min-width: 12rem;
+}
+
+.chord-preview {
+  display: inline-block;
+  min-width: 3rem;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-weight: 700;
+  color: var(--teal);
+}
+
+.btn-tiny {
+  margin-left: 0.3rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--teal);
+  background: transparent;
+  color: var(--teal);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-tiny:hover {
+  background: var(--teal);
+  color: var(--midnight);
+}
+
+.btn-tiny.danger {
+  margin-left: 0;
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.btn-tiny.danger:hover {
+  background: var(--error);
+  color: var(--midnight);
+}
+
+.btn-tiny:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 2px;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.7rem;
+}
+
+.editor-message {
+  min-height: 1.4rem;
+  margin: 0.8rem 0 0;
+  font-size: 0.9rem;
+  color: var(--warning);
+}
+
+.editor-message.success {
+  color: var(--success);
+}
+
+.editor-message.error {
+  color: var(--error);
+}
