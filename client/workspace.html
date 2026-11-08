@@ -59,6 +59,22 @@
             <p class="label">Chord</p>
             <p class="value chord" id="now-chord">—</p>
           </div>
+          <div class="now-box">
+            <p class="label">Roman numeral</p>
+            <p class="value roman" id="now-roman">—</p>
+          </div>
+          <div class="now-box">
+            <p class="label">Solfège (moveable do)</p>
+            <p class="value solfa" id="now-solfa">—</p>
+          </div>
+        </div>
+
+        <div class="solfa-row">
+          <label for="minor-base">Solfège in minor keys</label>
+          <select id="minor-base">
+            <option value="la">la-based (la is the tonic)</option>
+            <option value="do">do-based (do is the tonic)</option>
+          </select>
         </div>
 
         <h2 class="section-title">Chords</h2>
@@ -82,6 +98,7 @@
     <footer class="site-footer">© 2026 EMTV TECH. All rights reserved.</footer>
     <script src="/js/clock.js"></script>
     <script src="/js/timeline-utils.js"></script>
+    <script src="/js/theory.js"></script>
     <script src="/js/views/chord-view.js"></script>
     <script src="/js/views/piano-view.js"></script>
     <script src="/js/views/lyrics-view.js"></script>

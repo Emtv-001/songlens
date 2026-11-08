@@ -1,6 +1,8 @@
 // Chord timeline: one block per chord, sized by duration, with a moving playhead.
 // It never keeps its own timer. It only reacts to states from the shared clock.
-function createChordView(container, chords, onSeek) {
+// getSubLabel(chord) is optional and returns small text shown under the chord name
+// (for example the Roman numeral).
+function createChordView(container, chords, onSeek, getSubLabel) {
   const PX_PER_SECOND = 40;
   const MIN_BLOCK_WIDTH = 34;
 
@@ -24,7 +26,7 @@ function createChordView(container, chords, onSeek) {
     track.style.width = `${Math.ceil(seconds * PX_PER_SECOND) + 40}px`;
   }
 
-  chords.forEach((chord, index) => {
+  chords.forEach((chord) => {
     const block = document.createElement('button');
     block.type = 'button';
     block.className = 'chord-block';
@@ -32,10 +34,23 @@ function createChordView(container, chords, onSeek) {
     block.style.width = `${Math.max((chord.end - chord.start) * PX_PER_SECOND - 4, MIN_BLOCK_WIDTH)}px`;
 
     const symbol = TimelineUtils.chordSymbol(chord);
-    block.textContent = symbol;
+    const sub = getSubLabel ? getSubLabel(chord) : null;
+
+    const name = document.createElement('span');
+    name.className = 'chord-name';
+    name.textContent = symbol;
+    block.appendChild(name);
+
+    if (sub) {
+      const roman = document.createElement('span');
+      roman.className = 'chord-roman';
+      roman.textContent = sub;
+      block.appendChild(roman);
+    }
+
     block.setAttribute(
       'aria-label',
-      `Chord ${symbol} at ${TimelineUtils.formatTime(chord.start)}. Select to jump here.`
+      `Chord ${symbol}${sub ? `, ${sub}` : ''}, at ${TimelineUtils.formatTime(chord.start)}. Select to jump here.`
     );
     block.addEventListener('click', () => onSeek(chord.start));
 

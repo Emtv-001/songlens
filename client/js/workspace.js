@@ -13,6 +13,9 @@ const lyricsBoxEl = document.getElementById('lyrics-box');
 const hintEl = document.getElementById('timeline-hint');
 const editorEl = document.getElementById('editor');
 const metaEl = document.getElementById('song-meta');
+const romanEl = document.getElementById('now-roman');
+const solfaEl = document.getElementById('now-solfa');
+const minorBaseEl = document.getElementById('minor-base');
 
 const songId = new URLSearchParams(window.location.search).get('id');
 
@@ -23,6 +26,23 @@ const workspace = {
   clock: null,
   unsubscribers: [],
 };
+
+// "la" (la-based minor, the default) or "do" (do-based minor).
+function getMinorBase() {
+  try {
+    return localStorage.getItem('songlens.minorBase') === 'do' ? 'do' : 'la';
+  } catch (err) {
+    return 'la';
+  }
+}
+
+function saveMinorBase(value) {
+  try {
+    localStorage.setItem('songlens.minorBase', value);
+  } catch (err) {
+    // The setting just will not be remembered.
+  }
+}
 
 function setStatus(text, isError) {
   statusEl.textContent = text;
@@ -52,7 +72,7 @@ function showEmpty(container, message) {
   container.replaceChildren(p);
 }
 
-// Shows the current time and the active chord as big text.
+// Shows the time, the active chord, its Roman numeral and its solfege syllables.
 function createNowView() {
   let lastTime = '';
   let lastChord = null;
@@ -66,10 +86,21 @@ function createNowView() {
 
     const chordIndex = TimelineUtils.findActiveIndex(workspace.timeline.chords, state.time);
     if (chordIndex !== lastChord) {
-      chordEl.textContent =
-        chordIndex === -1
-          ? '—'
-          : TimelineUtils.chordSymbol(workspace.timeline.chords[chordIndex]);
+      const { keyPc, mode } = workspace.timeline;
+      const chord = chordIndex === -1 ? null : workspace.timeline.chords[chordIndex];
+
+      chordEl.textContent = chord ? TimelineUtils.chordSymbol(chord) : '—';
+
+      if (!chord) {
+        romanEl.textContent = '—';
+        solfaEl.textContent = '—';
+      } else if (keyPc === null || keyPc === undefined) {
+        romanEl.textContent = 'Set the key';
+        solfaEl.textContent = 'Set the key';
+      } else {
+        romanEl.textContent = Theory.romanNumeral(chord, keyPc, mode);
+        solfaEl.textContent = Theory.chordSolfege(chord, keyPc, mode, getMinorBase()).join(' · ');
+      }
       lastChord = chordIndex;
     }
   };
@@ -119,7 +150,9 @@ function buildViews() {
   add(createNowView());
 
   if (chords.length > 0) {
-    add(createChordView(chordStripEl, chords, seekTo).render);
+    const { keyPc, mode } = workspace.timeline;
+    const romanFor = (chord) => Theory.romanNumeral(chord, keyPc, mode);
+    add(createChordView(chordStripEl, chords, seekTo, romanFor).render);
   } else {
     showEmpty(chordStripEl, 'No chords yet.');
   }
@@ -209,6 +242,12 @@ audio.addEventListener('error', async () => {
       refreshing = false;
     }, 3000);
   }
+});
+
+minorBaseEl.value = getMinorBase();
+minorBaseEl.addEventListener('change', () => {
+  saveMinorBase(minorBaseEl.value);
+  if (workspace.clock) buildViews();
 });
 
 speed.addEventListener('change', () => {
