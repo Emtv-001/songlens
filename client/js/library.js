@@ -34,9 +34,15 @@ function makeCard(item) {
   const actions = document.createElement('div');
   actions.className = 'card-actions';
 
+  const open = document.createElement('a');
+  open.className = 'card-link';
+  open.href = `/workspace.html?id=${encodeURIComponent(song._id)}`;
+  open.textContent = 'Open';
+
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'btn btn-small btn-outline';
+  button.style.marginLeft = '0.6rem';
   button.textContent = 'Remove';
 
   button.addEventListener('click', async () => {
@@ -56,7 +62,7 @@ function makeCard(item) {
     }
   });
 
-  actions.appendChild(button);
+  actions.append(open, button);
   li.append(title, artist, desc, actions);
   return li;
 }

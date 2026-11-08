@@ -20,7 +20,7 @@ function makeActions(song) {
 
   const open = document.createElement('a');
   open.className = 'card-link';
-  open.href = `/play.html?id=${encodeURIComponent(song._id)}`;
+  open.href = `/workspace.html?id=${encodeURIComponent(song._id)}`;
   open.textContent = 'Open';
   actions.appendChild(open);
   actions.appendChild(document.createTextNode(' '));
