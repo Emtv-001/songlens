@@ -3,7 +3,14 @@ const rateLimit = require('express-rate-limit');
 const { body } = require('express-validator');
 const optionalAuth = require('../../middleware/optionalAuth');
 const requireAuth = require('../../middleware/requireAuth');
-const { listSongs, listMine, getSong, createSong } = require('./songs.controller');
+const {
+  listSongs,
+  listMine,
+  getSong,
+  createSong,
+  updateSong,
+  deleteSong,
+} = require('./songs.controller');
 const { uploadAudio, getAudioUrl, streamAudio } = require('./audio.controller');
 
 const router = express.Router();
@@ -48,5 +55,30 @@ router.get('/:songId/audio-url', optionalAuth, getAudioUrl);
 router.get('/:songId/stream', streamAudio);
 
 router.get('/:songId', optionalAuth, getSong);
+
+router.patch(
+  '/:songId',
+  requireAuth,
+  [
+    body('title')
+      .optional()
+      .trim()
+      .isLength({ min: 1, max: 200 })
+      .withMessage('Title is required (max 200 characters)'),
+    body('artist')
+      .optional()
+      .trim()
+      .isLength({ max: 200 })
+      .withMessage('Artist must be 200 characters or fewer'),
+    body('description')
+      .optional()
+      .trim()
+      .isLength({ max: 2000 })
+      .withMessage('Description must be 2000 characters or fewer'),
+  ],
+  updateSong
+);
+
+router.delete('/:songId', requireAuth, deleteSong);
 
 module.exports = router;
