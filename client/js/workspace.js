@@ -16,6 +16,8 @@ const editorEl = document.getElementById('editor');
 const metaEl = document.getElementById('song-meta');
 const romanEl = document.getElementById('now-roman');
 const solfaEl = document.getElementById('now-solfa');
+const noteEl = document.getElementById('now-note');
+const noteSolfaEl = document.getElementById('now-note-solfa');
 const minorBaseEl = document.getElementById('minor-base');
 const transposeDownEl = document.getElementById('transpose-down');
 const transposeUpEl = document.getElementById('transpose-up');
@@ -109,10 +111,11 @@ function showEmpty(container, message) {
   container.replaceChildren(p);
 }
 
-// Shows the time, the active chord, its Roman numeral and its solfege syllables.
+// Shows the time, the active chord (Roman numeral, solfege) and the current melody note.
 function createNowView() {
   let lastTime = '';
   let lastChord = null;
+  let lastNote = null;
 
   return function render(state) {
     const timeText = TimelineUtils.formatTime(state.time);
@@ -139,6 +142,23 @@ function createNowView() {
         solfaEl.textContent = Theory.chordSolfege(chord, keyPc, mode, getMinorBase()).join(' · ');
       }
       lastChord = chordIndex;
+    }
+
+    const noteIndex = TimelineUtils.findActiveIndex(workspace.display.melody || [], state.time);
+    if (noteIndex !== lastNote) {
+      const { keyPc, mode } = workspace.display;
+      if (noteIndex === -1) {
+        noteEl.textContent = '—';
+        noteSolfaEl.textContent = '—';
+      } else {
+        const note = workspace.display.melody[noteIndex];
+        noteEl.textContent = TimelineUtils.midiName(note.midi);
+        noteSolfaEl.textContent =
+          keyPc === null || keyPc === undefined
+            ? 'Set the key'
+            : Theory.solfege(note.midi % 12, keyPc, mode, getMinorBase());
+      }
+      lastNote = noteIndex;
     }
   };
 }
@@ -202,7 +222,7 @@ function buildViews() {
   }
 
   // The piano is always shown so it can be explored even without chord data.
-  add(createPianoView(pianoEl, pianoNotesEl, chords).render);
+  add(createPianoView(pianoEl, pianoNotesEl, chords, melody).render);
 
   if (lyrics.length > 0) {
     add(createLyricsView(lyricsBoxEl, lyrics, seekTo).render);

@@ -1,6 +1,8 @@
-// Interactive piano (C3 to B5). Highlights the notes of the active chord.
+// Interactive piano (C3 to B5). Highlights the notes of the active chord (teal)
+// and the current melody note (coral).
 // Reacts only to the shared clock; clicking or tapping a key plays that note.
-function createPianoView(container, notesLabel, chords) {
+function createPianoView(container, notesLabel, chords, melody) {
+  const melodyNotes = melody || [];
   const FIRST = 48; // C3
   const LAST = 83; // B5
   const WHITE_W = 28;
@@ -12,6 +14,7 @@ function createPianoView(container, notesLabel, chords) {
 
   const keys = new Map();
   let activeIndex = -1;
+  let activeNoteIndex = -1;
   let audioCtx = null;
 
   let whiteCount = 0;
@@ -105,29 +108,53 @@ function createPianoView(container, notesLabel, chords) {
     });
   }
 
+  function clearMelody() {
+    keys.forEach((key) => key.classList.remove('melody'));
+  }
+
+  function describe(chordIndex, noteIndex) {
+    const parts = [];
+    if (chordIndex !== -1) {
+      const chord = chords[chordIndex];
+      const names = TimelineUtils.chordTones(chord).map((tone) => TimelineUtils.NOTE_NAMES[tone.midi % 12]);
+      parts.push(`${TimelineUtils.chordSymbol(chord)}: ${names.join(' · ')}`);
+    }
+    if (noteIndex !== -1) {
+      parts.push(`Melody: ${TimelineUtils.midiName(melodyNotes[noteIndex].midi)}`);
+    }
+    return parts.length ? parts.join('  |  ') : 'No chord playing';
+  }
+
   function render(state) {
     const index = TimelineUtils.findActiveIndex(chords, state.time);
-    if (index === activeIndex) return;
-    activeIndex = index;
+    const noteIndex = TimelineUtils.findActiveIndex(melodyNotes, state.time);
+    if (index === activeIndex && noteIndex === activeNoteIndex) return;
 
-    clearHighlights();
-    if (index === -1) {
-      notesLabel.textContent = 'No chord playing';
-      return;
+    if (index !== activeIndex) {
+      activeIndex = index;
+      clearHighlights();
+      if (index !== -1) {
+        TimelineUtils.chordTones(chords[index]).forEach((tone) => {
+          const key = keys.get(tone.midi);
+          if (!key) return;
+          key.classList.add('chord');
+          if (tone.role === 'root') key.classList.add('root');
+          if (tone.role === 'bass') key.classList.add('bass');
+        });
+      }
     }
 
-    const chord = chords[index];
-    const tones = TimelineUtils.chordTones(chord);
-    const names = [];
-    tones.forEach((tone) => {
-      const key = keys.get(tone.midi);
-      if (!key) return;
-      key.classList.add('chord');
-      if (tone.role === 'root') key.classList.add('root');
-      if (tone.role === 'bass') key.classList.add('bass');
-      names.push(TimelineUtils.NOTE_NAMES[tone.midi % 12]);
-    });
-    notesLabel.textContent = `${TimelineUtils.chordSymbol(chord)}: ${names.join(' · ')}`;
+    if (noteIndex !== activeNoteIndex) {
+      activeNoteIndex = noteIndex;
+      clearMelody();
+      if (noteIndex !== -1) {
+        // A note outside C3 to B5 has no key on this keyboard; the label still names it.
+        const key = keys.get(melodyNotes[noteIndex].midi);
+        if (key) key.classList.add('melody');
+      }
+    }
+
+    notesLabel.textContent = describe(index, noteIndex);
   }
 
   return { render };

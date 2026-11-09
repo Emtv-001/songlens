@@ -64,3 +64,11 @@
   font-size: 0.95rem;
   min-height: 1.4rem;
 }
+
+.piano-svg rect.key.melody,
+.piano-svg rect.key.white.melody,
+.piano-svg rect.key.black.melody {
+  fill: var(--coral) !important;
+  stroke: var(--ivory);
+  stroke-width: 2;
+}
