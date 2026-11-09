@@ -3,6 +3,7 @@ const { validationResult } = require('express-validator');
 const Song = require('../../models/Song');
 const SongTimeline = require('../../models/SongTimeline');
 const UserLibrary = require('../../models/UserLibrary');
+const AnalysisRun = require('../../models/AnalysisRun');
 const storage = require('../../storage');
 
 const HIDDEN_FIELDS = '-audio.storageKey';
@@ -172,6 +173,7 @@ async function deleteSong(req, res, next) {
 
     await SongTimeline.deleteOne({ songId: song._id });
     await UserLibrary.deleteMany({ songId: song._id });
+    await AnalysisRun.deleteMany({ songId: song._id });
     await Song.deleteOne({ _id: song._id });
 
     res.status(204).end();

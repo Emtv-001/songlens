@@ -33,6 +33,7 @@ app.use('/api/v1/auth/register', authLimiter);
 app.use('/api/v1/auth', require('./modules/auth/auth.routes'));
 app.use('/api/v1/songs', require('./modules/songs/songs.routes'));
 app.use('/api/v1/songs', require('./modules/timeline/timeline.routes'));
+app.use('/api/v1/songs', require('./modules/analysis/analysis.routes'));
 app.use('/api/v1/users/me/library', require('./modules/library/library.routes'));
 
 app.use(notFound);
