@@ -8,6 +8,7 @@ const timeEl = document.getElementById('now-time');
 const chordEl = document.getElementById('now-chord');
 const chordStripEl = document.getElementById('chord-strip');
 const melodyLaneEl = document.getElementById('melody-lane');
+const staffEl = document.getElementById('staff');
 const pianoEl = document.getElementById('piano');
 const pianoNotesEl = document.getElementById('piano-notes');
 const lyricsBoxEl = document.getElementById('lyrics-box');
@@ -225,6 +226,12 @@ function buildViews() {
     add(createMelodyView(melodyLaneEl, melody, seekTo, flats).render);
   } else {
     showEmpty(melodyLaneEl, 'No melody yet.');
+  }
+
+  if (melody && melody.length > 0) {
+    add(createStaffView(staffEl, melody, seekTo, flats).render);
+  } else {
+    showEmpty(staffEl, 'No melody yet, so there is nothing to show on the staff.');
   }
 
   // The piano is always shown so it can be explored even without chord data.

@@ -61,6 +61,17 @@ const TimelineUtils = (() => {
     return pcName(midi % 12, flats) + (Math.floor(midi / 12) - 1);
   }
 
+  // Where a note sits on a staff. `step` counts letter names upward from C0
+  // (C4 = 28, E4 = 30, the bottom line of a treble staff). `accidental` is '', '#' or 'b'.
+  const LETTER_SHARPS = [[0, ''], [0, '#'], [1, ''], [1, '#'], [2, ''], [3, ''], [3, '#'], [4, ''], [4, '#'], [5, ''], [5, '#'], [6, '']];
+  const LETTER_FLATS = [[0, ''], [1, 'b'], [1, ''], [2, 'b'], [2, ''], [3, ''], [4, 'b'], [4, ''], [5, 'b'], [5, ''], [6, 'b'], [6, '']];
+
+  function staffPosition(midi, flats) {
+    const [letter, accidental] = (flats ? LETTER_FLATS : LETTER_SHARPS)[midi % 12];
+    const octave = Math.floor(midi / 12) - 1;
+    return { step: octave * 7 + letter, accidental };
+  }
+
   // Events must be sorted by start. Returns the index of the event that contains
   // `time` (start <= time < end), or -1 if none does.
   function findActiveIndex(events, time) {
@@ -87,7 +98,7 @@ const TimelineUtils = (() => {
     return `${minutes}:${rest}`;
   }
 
-  return { NOTE_NAMES, FLAT_NAMES, pcName, chordSymbol, chordTones, midiName, findActiveIndex, formatTime };
+  return { NOTE_NAMES, FLAT_NAMES, pcName, chordSymbol, chordTones, midiName, staffPosition, findActiveIndex, formatTime };
 })();
 
 if (typeof module !== 'undefined') module.exports = TimelineUtils;

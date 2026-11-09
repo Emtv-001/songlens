@@ -340,3 +340,104 @@
   pointer-events: none;
   z-index: 3;
 }
+
+.staff-wrap {
+  display: flex;
+  background: var(--surface);
+  border-radius: 12px;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+}
+
+.staff-clef {
+  flex: 0 0 44px;
+  border-right: 1px solid rgba(169, 178, 197, 0.25);
+}
+
+.staff-clef svg {
+  display: block;
+}
+
+.staff-clef-glyph {
+  fill: var(--ivory);
+  font-family: 'Segoe UI Symbol', 'Noto Music', 'Apple Symbols', serif;
+}
+
+.staff-lane {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.staff-svg {
+  display: block;
+}
+
+.staff-line {
+  stroke: var(--soft-grey);
+  stroke-width: 1;
+}
+
+.staff-ledger {
+  stroke: var(--soft-grey);
+  stroke-width: 1.4;
+}
+
+.staff-note {
+  cursor: pointer;
+}
+
+.staff-head {
+  fill: var(--ivory);
+}
+
+.staff-stem {
+  stroke: var(--ivory);
+  stroke-width: 1.4;
+}
+
+.staff-duration {
+  stroke: var(--teal);
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+
+.staff-accidental {
+  fill: var(--ivory);
+  font-family: 'Segoe UI Symbol', 'Noto Music', 'Apple Symbols', serif;
+}
+
+.staff-hit {
+  fill: transparent;
+}
+
+.staff-note.active .staff-head,
+.staff-note.active .staff-accidental {
+  fill: var(--coral);
+}
+
+.staff-note.active .staff-stem {
+  stroke: var(--coral);
+}
+
+.staff-note.active .staff-duration {
+  stroke: var(--coral);
+  opacity: 0.9;
+}
+
+.staff-note:focus-visible {
+  outline: none;
+}
+
+.staff-note:focus-visible .staff-head {
+  stroke: var(--coral);
+  stroke-width: 3;
+}
+
+.staff-cursor {
+  stroke: var(--teal);
+  stroke-width: 2;
+  pointer-events: none;
+}
