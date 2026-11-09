@@ -9,6 +9,7 @@ const chordEl = document.getElementById('now-chord');
 const chordStripEl = document.getElementById('chord-strip');
 const melodyLaneEl = document.getElementById('melody-lane');
 const staffEl = document.getElementById('staff');
+const staffLabelsEl = document.getElementById('staff-labels');
 const pianoEl = document.getElementById('piano');
 const pianoNotesEl = document.getElementById('piano-notes');
 const lyricsBoxEl = document.getElementById('lyrics-box');
@@ -78,6 +79,24 @@ function getMinorBase() {
     return localStorage.getItem('songlens.minorBase') === 'do' ? 'do' : 'la';
   } catch (err) {
     return 'la';
+  }
+}
+
+// What to write under each note on the staff: "solfege", "name" or "none".
+function getStaffLabels() {
+  try {
+    const value = localStorage.getItem('songlens.staffLabels');
+    return value === 'name' || value === 'none' ? value : 'solfege';
+  } catch (err) {
+    return 'solfege';
+  }
+}
+
+function saveStaffLabels(value) {
+  try {
+    localStorage.setItem('songlens.staffLabels', value);
+  } catch (err) {
+    // The setting just will not be remembered.
   }
 }
 
@@ -229,7 +248,26 @@ function buildViews() {
   }
 
   if (melody && melody.length > 0) {
-    add(createStaffView(staffEl, melody, seekTo, flats).render);
+    const { keyPc, mode } = workspace.display;
+    const hasKey = keyPc !== null && keyPc !== undefined;
+    const labelMode = getStaffLabels();
+    const staffExtras = {
+      chords,
+      chordLabel: (chord) => ({
+        symbol: TimelineUtils.chordSymbol(chord, flats),
+        sub: hasKey ? Theory.romanNumeral(chord, keyPc, mode) : null,
+      }),
+      noteLabel:
+        labelMode === 'none'
+          ? null
+          : (note) =>
+              labelMode === 'name'
+                ? TimelineUtils.pcName(note.midi % 12, flats)
+                : hasKey
+                  ? Theory.solfege(note.midi % 12, keyPc, mode, getMinorBase())
+                  : null,
+    };
+    add(createStaffView(staffEl, melody, seekTo, flats, staffExtras).render);
   } else {
     showEmpty(staffEl, 'No melody yet, so there is nothing to show on the staff.');
   }
@@ -322,6 +360,12 @@ audio.addEventListener('error', async () => {
       refreshing = false;
     }, 3000);
   }
+});
+
+staffLabelsEl.value = getStaffLabels();
+staffLabelsEl.addEventListener('change', () => {
+  saveStaffLabels(staffLabelsEl.value);
+  if (workspace.clock) buildViews();
 });
 
 minorBaseEl.value = getMinorBase();

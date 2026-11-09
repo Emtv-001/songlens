@@ -441,3 +441,43 @@
   stroke-width: 2;
   pointer-events: none;
 }
+
+.staff-chord {
+  cursor: pointer;
+}
+
+.staff-chord-symbol {
+  fill: var(--ivory);
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-weight: 800;
+}
+
+.staff-chord-sub {
+  fill: var(--soft-grey);
+  font-family: 'Inter', sans-serif;
+}
+
+.staff-chord-tick {
+  stroke: var(--soft-grey);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.staff-chord.active .staff-chord-symbol {
+  fill: var(--coral);
+}
+
+.staff-chord.active .staff-chord-tick {
+  stroke: var(--coral);
+  opacity: 1;
+}
+
+.staff-chord:focus-visible .staff-chord-symbol {
+  text-decoration: underline;
+}
+
+.staff-note-label {
+  fill: var(--teal);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+}
