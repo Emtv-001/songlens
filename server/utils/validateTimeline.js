@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const QUALITIES = ['maj', 'min', 'dim', 'aug', '7', 'maj7', 'min7', 'sus2', 'sus4'];
 const MODES = ['major', 'minor'];
 const MAX_EVENTS = 2000;
+const MAX_NOTES = 5000;
 
 function isNum(v) {
   return typeof v === 'number' && Number.isFinite(v);
@@ -124,6 +125,25 @@ function validateTimeline(body) {
     });
   }
   out.chords.sort((a, b) => a.start - b.start);
+
+  // Melody (only touched when the request includes it, so older clients cannot wipe it)
+  if (body.melody !== undefined) {
+    const melody = body.melody;
+    if (!Array.isArray(melody)) return { error: 'melody must be a list' };
+    if (melody.length > MAX_NOTES) return { error: `Too many melody notes (max ${MAX_NOTES})` };
+    const noteId = makeIdKeeper();
+    out.melody = [];
+    for (let i = 0; i < melody.length; i += 1) {
+      const item = melody[i];
+      const problem = cleanTimes(item, 'Note', i);
+      if (problem) return { error: problem };
+      if (!Number.isInteger(item.midi) || item.midi < 0 || item.midi > 127) {
+        return { error: `Note #${i + 1}: pitch must be a whole number from 0 to 127` };
+      }
+      out.melody.push({ id: noteId(item.id), start: item.start, end: item.end, midi: item.midi });
+    }
+    out.melody.sort((a, b) => a.start - b.start);
+  }
 
   return { value: out };
 }

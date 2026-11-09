@@ -282,3 +282,61 @@
   color: var(--soft-grey);
   font-size: 0.8rem;
 }
+
+.melody-lane {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 0.5rem 0;
+  margin-bottom: 1.25rem;
+}
+
+.melody-track {
+  position: relative;
+  min-width: 100%;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 11px,
+    rgba(169, 178, 197, 0.12) 11px,
+    rgba(169, 178, 197, 0.12) 12px
+  );
+}
+
+.melody-note {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: var(--teal);
+  cursor: pointer;
+}
+
+.melody-note:hover {
+  filter: brightness(1.15);
+}
+
+.melody-note.active {
+  background: var(--coral);
+  box-shadow: 0 0 0 2px var(--ivory);
+  z-index: 2;
+}
+
+.melody-note:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 2px;
+}
+
+.melody-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: var(--ivory);
+  pointer-events: none;
+  z-index: 3;
+}

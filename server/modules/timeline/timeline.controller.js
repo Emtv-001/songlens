@@ -24,6 +24,7 @@ function emptyTimeline(songId) {
     timeSignature: '4/4',
     lyrics: [],
     chords: [],
+    melody: [],
     revision: 0,
   };
 }
@@ -41,9 +42,10 @@ async function getTimeline(req, res, next) {
       return res.status(404).json({ message: 'Song not found' });
     }
 
-    const timeline = await SongTimeline.findOne({ songId }).select('-__v').lean();
+    const stored = await SongTimeline.findOne({ songId }).select('-__v').lean();
     res.json({
-      timeline: timeline || emptyTimeline(songId),
+      // Defaults first, so timelines saved before the melody existed still have a melody list.
+      timeline: { ...emptyTimeline(songId), ...(stored || {}) },
       canEdit: canEdit(song, req.user),
     });
   } catch (err) {
@@ -69,7 +71,7 @@ async function saveTimeline(req, res, next) {
       return res.status(400).json({ message: error });
     }
 
-    const timeline = await SongTimeline.findOneAndUpdate(
+    const saved = await SongTimeline.findOneAndUpdate(
       { songId },
       {
         $set: { ...value, source: 'manual' },
@@ -81,7 +83,7 @@ async function saveTimeline(req, res, next) {
       .select('-__v')
       .lean();
 
-    res.json({ timeline });
+    res.json({ timeline: { ...emptyTimeline(songId), ...saved } });
   } catch (err) {
     next(err);
   }

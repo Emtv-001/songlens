@@ -93,6 +93,11 @@ const Theory = (() => {
     };
   }
 
+  // A melody note keeps its octave: moving up 2 semitones really raises the pitch.
+  function transposeNote(note, semitones) {
+    return { ...note, midi: Math.max(0, Math.min(127, note.midi + semitones)) };
+  }
+
   // Returns a transposed copy for display. The stored timeline is never changed.
   function transposeTimeline(timeline, semitones) {
     if (!semitones) return timeline;
@@ -103,10 +108,11 @@ const Theory = (() => {
           ? timeline.keyPc
           : transposePc(timeline.keyPc, semitones),
       chords: (timeline.chords || []).map((chord) => transposeChord(chord, semitones)),
+      melody: (timeline.melody || []).map((note) => transposeNote(note, semitones)),
     };
   }
 
-  return { romanNumeral, solfege, chordSolfege, transposeChord, transposeTimeline };
+  return { romanNumeral, solfege, chordSolfege, transposeChord, transposeNote, transposeTimeline };
 })();
 
 if (typeof module !== 'undefined') module.exports = Theory;

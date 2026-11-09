@@ -1,4 +1,4 @@
-// Editor for song settings, chords and lyrics.
+// Editor for song settings, chords, melody and lyrics.
 // It works on a draft copy and only sends it to the server when the user presses Save.
 function createEditor({ container, audio, songId, timeline, onSaved }) {
   const NOTES = TimelineUtils.NOTE_NAMES;
@@ -15,6 +15,9 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
   ];
   const TIME_SIGNATURES = ['2/4', '3/4', '4/4', '5/4', '6/8', '9/8', '12/8'];
   const NOTE_OPTIONS = NOTES.map((name, i) => [String(i), name]);
+  // Melody pitches offered in the editor: C2 (36) to C7 (96).
+  const PITCH_LOW = 36;
+  const PITCH_HIGH = 96;
 
   let draft = cloneTimeline(timeline);
   let dirty = false;
@@ -38,6 +41,12 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
         start: l.start,
         end: l.end,
         text: l.text,
+      })),
+      melody: (t.melody || []).map((n) => ({
+        id: n.id,
+        start: n.start,
+        end: n.end,
+        midi: n.midi,
       })),
     };
   }
@@ -111,6 +120,7 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
 
   const chordBody = h('tbody');
   const lyricBody = h('tbody');
+  const melodyBody = h('tbody');
 
   const saveBtn = h('button', { type: 'button', class: 'btn btn-small', text: 'Save changes' });
   const revertBtn = h('button', { type: 'button', class: 'btn btn-small btn-outline', text: 'Revert' });
@@ -118,6 +128,11 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     type: 'button',
     class: 'btn btn-small btn-outline',
     text: 'Add chord at current time',
+  });
+  const addNoteBtn = h('button', {
+    type: 'button',
+    class: 'btn btn-small btn-outline',
+    text: 'Add note at current time',
   });
   const addLyricBtn = h('button', {
     type: 'button',
@@ -164,6 +179,19 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     h('div', { class: 'editor-actions' }, addChordBtn)
   );
 
+  const melodyGroup = h(
+    'fieldset',
+    { class: 'editor-group' },
+    h('legend', { text: 'Melody' }),
+    h(
+      'p',
+      { class: 'editor-help' },
+      'One row per sung note. Middle C is C4. Notes are stored as pitch numbers, so the names and solfège are worked out for you.'
+    ),
+    table(['#', 'Start (s)', 'End (s)', 'Pitch', ''], melodyBody),
+    h('div', { class: 'editor-actions' }, addNoteBtn)
+  );
+
   const lyricsGroup = h(
     'fieldset',
     { class: 'editor-group' },
@@ -175,7 +203,7 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
   const panel = h(
     'details',
     { class: 'editor-panel' },
-    h('summary', { text: 'Edit chords and lyrics' }),
+    h('summary', { text: 'Edit chords, melody and lyrics' }),
     h(
       'p',
       { class: 'editor-help' },
@@ -184,6 +212,7 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     ),
     settings,
     chordsGroup,
+    melodyGroup,
     lyricsGroup,
     h('div', { class: 'editor-actions' }, saveBtn, revertBtn),
     message
@@ -276,6 +305,40 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     );
   }
 
+  function pitchOptions(current) {
+    const options = [];
+    for (let midi = PITCH_HIGH; midi >= PITCH_LOW; midi -= 1) {
+      options.push([String(midi), TimelineUtils.midiName(midi)]);
+    }
+    // A pitch outside the usual range (for example from a future import) is still shown.
+    if (current < PITCH_LOW || current > PITCH_HIGH) {
+      options.push([String(current), TimelineUtils.midiName(current)]);
+    }
+    return options;
+  }
+
+  function noteRow(note, index) {
+    const n = index + 1;
+    const pitchSelect = selectEl(`Note ${n} pitch`, pitchOptions(note.midi), String(note.midi), (v) => {
+      note.midi = parseInt(v, 10);
+      markDirty();
+    });
+
+    return h(
+      'tr',
+      {},
+      h('td', { text: String(n) }),
+      timeCell(`Note ${n} start (seconds)`, note, 'start'),
+      timeCell(`Note ${n} end (seconds)`, note, 'end'),
+      h('td', {}, pitchSelect),
+      deleteButton(`Delete note ${n}`, () => {
+        draft.melody.splice(index, 1);
+        renderMelodyRows();
+        markDirty();
+      })
+    );
+  }
+
   function lyricRow(line, index) {
     const n = index + 1;
     const text = h('input', {
@@ -309,6 +372,13 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     const rows = draft.chords.map(chordRow);
     chordBody.replaceChildren(
       ...(rows.length ? rows : [emptyRow(8, 'No chords yet. Use "Add chord at current time".')])
+    );
+  }
+
+  function renderMelodyRows() {
+    const rows = draft.melody.map(noteRow);
+    melodyBody.replaceChildren(
+      ...(rows.length ? rows : [emptyRow(5, 'No notes yet. Use "Add note at current time".')])
     );
   }
 
@@ -367,6 +437,7 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
   function renderAll() {
     renderSettings();
     renderChordRows();
+    renderMelodyRows();
     renderLyricRows();
   }
 
@@ -382,6 +453,25 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     });
     draft.chords.sort((a, b) => a.start - b.start);
     renderChordRows();
+    markDirty();
+  });
+
+  // A new note starts at the current time, lasts half a second, and begins on the
+  // previous note's pitch (or the key's tonic in octave 4) so it is close to where you want it.
+  addNoteBtn.addEventListener('click', () => {
+    const start = currentTime();
+    let end = start + 0.5;
+    if (Number.isFinite(audio.duration) && end > audio.duration) end = audio.duration;
+    if (end <= start) end = start + 0.5;
+
+    const earlier = draft.melody.filter((note) => note.start <= start);
+    const midi = earlier.length
+      ? earlier[earlier.length - 1].midi
+      : 60 + (draft.keyPc ?? 0);
+
+    draft.melody.push({ start, end: Number(end.toFixed(1)), midi });
+    draft.melody.sort((a, b) => a.start - b.start);
+    renderMelodyRows();
     markDirty();
   });
 
@@ -415,6 +505,7 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
         bass: c.bass,
       })),
       lyrics: draft.lyrics.map((l) => ({ id: l.id, start: l.start, end: l.end, text: l.text })),
+      melody: draft.melody.map((n) => ({ id: n.id, start: n.start, end: n.end, midi: n.midi })),
     };
   }
 

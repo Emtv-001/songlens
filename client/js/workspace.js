@@ -7,6 +7,7 @@ const speed = document.getElementById('speed');
 const timeEl = document.getElementById('now-time');
 const chordEl = document.getElementById('now-chord');
 const chordStripEl = document.getElementById('chord-strip');
+const melodyLaneEl = document.getElementById('melody-lane');
 const pianoEl = document.getElementById('piano');
 const pianoNotesEl = document.getElementById('piano-notes');
 const lyricsBoxEl = document.getElementById('lyrics-box');
@@ -25,12 +26,12 @@ const songId = new URLSearchParams(window.location.search).get('id');
 
 const workspace = {
   song: null,
-  timeline: { chords: [], lyrics: [] },
+  timeline: { chords: [], lyrics: [], melody: [] },
   canEdit: false,
   clock: null,
   unsubscribers: [],
   transpose: 0, // semitones, display only
-  display: { chords: [], lyrics: [] }, // the timeline as shown (transposed copy)
+  display: { chords: [], lyrics: [], melody: [] }, // the timeline as shown (transposed copy)
 };
 
 // The views show a transposed copy. The stored timeline (and the editor) stay original.
@@ -180,7 +181,7 @@ function buildViews() {
   renderSongMeta();
   updateTransposeUi();
 
-  const { chords, lyrics } = workspace.display;
+  const { chords, lyrics, melody } = workspace.display;
   const clock = workspace.clock;
   const add = (render) => workspace.unsubscribers.push(clock.subscribe(render));
 
@@ -194,6 +195,12 @@ function buildViews() {
     showEmpty(chordStripEl, 'No chords yet.');
   }
 
+  if (melody && melody.length > 0) {
+    add(createMelodyView(melodyLaneEl, melody, seekTo).render);
+  } else {
+    showEmpty(melodyLaneEl, 'No melody yet.');
+  }
+
   // The piano is always shown so it can be explored even without chord data.
   add(createPianoView(pianoEl, pianoNotesEl, chords).render);
 
@@ -203,7 +210,8 @@ function buildViews() {
     showEmpty(lyricsBoxEl, 'No lyrics yet.');
   }
 
-  hintEl.hidden = chords.length > 0 || lyrics.length > 0 || !workspace.canEdit;
+  hintEl.hidden =
+    chords.length > 0 || lyrics.length > 0 || (melody && melody.length > 0) || !workspace.canEdit;
 }
 
 async function init() {

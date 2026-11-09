@@ -22,6 +22,18 @@ const chordSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// One melody note. The pitch is a MIDI number (middle C = 60); names, solfege and
+// staff notation are all derived from it.
+const noteSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    start: { type: Number, required: true },
+    end: { type: Number, required: true },
+    midi: { type: Number, required: true, min: 0, max: 127 },
+  },
+  { _id: false }
+);
+
 const songTimelineSchema = new mongoose.Schema(
   {
     songId: {
@@ -38,6 +50,7 @@ const songTimelineSchema = new mongoose.Schema(
     timeSignature: { type: String, default: '4/4' },
     lyrics: { type: [lyricSchema], default: [] },
     chords: { type: [chordSchema], default: [] },
+    melody: { type: [noteSchema], default: [] },
     revision: { type: Number, default: 0 },
   },
   { timestamps: true }
