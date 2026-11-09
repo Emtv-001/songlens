@@ -48,6 +48,13 @@ function displayFlats() {
   return Theory.usesFlats(workspace.display.keyPc, workspace.display.mode);
 }
 
+// Which names to use for notes outside the scale (ra or di, and so on). This follows the
+// song's ORIGINAL key, not the transposed one, so the syllables never change when you
+// transpose.
+function solfegeFlats() {
+  return Theory.usesFlats(workspace.timeline.keyPc, workspace.timeline.mode);
+}
+
 function updateTransposeUi() {
   const n = workspace.transpose;
   const original = workspace.timeline;
@@ -164,7 +171,7 @@ function createNowView() {
         solfaEl.textContent = 'Set the key';
       } else {
         romanEl.textContent = Theory.romanNumeral(chord, keyPc, mode);
-        solfaEl.textContent = Theory.chordSolfege(chord, keyPc, mode, getMinorBase()).join(' · ');
+        solfaEl.textContent = Theory.chordSolfege(chord, keyPc, mode, getMinorBase(), solfegeFlats()).join(' · ');
       }
       lastChord = chordIndex;
     }
@@ -181,7 +188,7 @@ function createNowView() {
         noteSolfaEl.textContent =
           keyPc === null || keyPc === undefined
             ? 'Set the key'
-            : Theory.solfege(note.midi % 12, keyPc, mode, getMinorBase());
+            : Theory.solfege(note.midi % 12, keyPc, mode, getMinorBase(), solfegeFlats());
       }
       lastNote = noteIndex;
     }
@@ -264,7 +271,7 @@ function buildViews() {
               labelMode === 'name'
                 ? TimelineUtils.pcName(note.midi % 12, flats)
                 : hasKey
-                  ? Theory.solfege(note.midi % 12, keyPc, mode, getMinorBase())
+                  ? Theory.solfege(note.midi % 12, keyPc, mode, getMinorBase(), solfegeFlats())
                   : null,
     };
     add(createStaffView(staffEl, melody, seekTo, flats, staffExtras).render);

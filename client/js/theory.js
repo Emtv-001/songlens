@@ -26,11 +26,18 @@ const Theory = (() => {
   };
   const LOWERCASE_QUALITIES = ['min', 'dim', 'min7'];
 
-  // Moveable-do syllables for each semitone above the tonic.
+  // Moveable-do syllables for each semitone above the tonic. The notes between the
+  // scale notes have two names: the sharp name (di, ri, fi, si, li) and the flat name
+  // (ra, me, se, le, te). Sharp keys use the sharp names and flat keys the flat names.
   // "do-based": do is the tonic in both major and minor.
-  const DO_BASED = ['do', 'ra', 're', 'me', 'mi', 'fa', 'fi', 'sol', 'le', 'la', 'te', 'ti'];
+  const DO_BASED_SHARP = ['do', 'di', 're', 'ri', 'mi', 'fa', 'fi', 'sol', 'si', 'la', 'li', 'ti'];
+  const DO_BASED_FLAT = ['do', 'ra', 're', 'me', 'mi', 'fa', 'se', 'sol', 'le', 'la', 'te', 'ti'];
+  // "do-based" minor: me, le and te are scale notes there, so they never change.
+  const DO_MINOR_SHARP = ['do', 'di', 're', 'me', 'mi', 'fa', 'fi', 'sol', 'le', 'la', 'te', 'ti'];
+  const DO_MINOR_FLAT = ['do', 'ra', 're', 'me', 'mi', 'fa', 'se', 'sol', 'le', 'la', 'te', 'ti'];
   // "la-based" minor: la is the tonic (la ti do re mi fa sol).
-  const LA_BASED_MINOR = ['la', 'te', 'ti', 'do', 'di', 're', 'ri', 'mi', 'fa', 'fi', 'sol', 'si'];
+  const LA_BASED_SHARP = ['la', 'li', 'ti', 'do', 'di', 're', 'ri', 'mi', 'fa', 'fi', 'sol', 'si'];
+  const LA_BASED_FLAT = ['la', 'te', 'ti', 'do', 'ra', 're', 'me', 'mi', 'fa', 'se', 'sol', 'le'];
 
   // Major keys that are written with flats (F, Bb, Eb, Ab, Db) and the sharp keys are the rest.
   // F-sharp major is written with sharps. For a minor key we look at its relative major,
@@ -79,19 +86,29 @@ const Theory = (() => {
   }
 
   // Moveable-do syllable for one pitch class (0 = C ... 11 = B).
-  function solfege(pc, keyPc, mode, minorBase) {
+  // `flats` chooses the flat names (ra, me, se, le, te) over the sharp names
+  // (di, ri, fi, si, li) for notes outside the scale. When it is left out, it follows the key.
+  function solfege(pc, keyPc, mode, minorBase, flats) {
     if (!hasKey(keyPc)) return null;
     const rel = relative(pc, keyPc);
+    const useFlats = flats === undefined ? usesFlats(keyPc, mode) : flats;
     const laBased = mode === 'minor' && minorBase !== 'do';
-    return (laBased ? LA_BASED_MINOR : DO_BASED)[rel];
+    let table;
+    if (mode === 'minor') {
+      if (laBased) table = useFlats ? LA_BASED_FLAT : LA_BASED_SHARP;
+      else table = useFlats ? DO_MINOR_FLAT : DO_MINOR_SHARP;
+    } else {
+      table = useFlats ? DO_BASED_FLAT : DO_BASED_SHARP;
+    }
+    return table[rel];
   }
 
   // The syllables of the chord's own notes, root first. (A slash-chord bass is left out.)
-  function chordSolfege(chord, keyPc, mode, minorBase) {
+  function chordSolfege(chord, keyPc, mode, minorBase, flats) {
     if (!chord || !hasKey(keyPc)) return null;
     return TimelineUtils.chordTones(chord)
       .filter((tone) => tone.role !== 'bass')
-      .map((tone) => solfege(tone.midi % 12, keyPc, mode, minorBase));
+      .map((tone) => solfege(tone.midi % 12, keyPc, mode, minorBase, flats));
   }
 
   function transposePc(pc, semitones) {
