@@ -1,5 +1,11 @@
 const TimelineUtils = (() => {
   const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+  // Name of one pitch class (0 = C ... 11 = B), with flats or sharps.
+  function pcName(pc, flats) {
+    return (flats ? FLAT_NAMES : NOTE_NAMES)[pc];
+  }
   const QUALITY_SUFFIX = {
     maj: '',
     min: 'm',
@@ -25,11 +31,12 @@ const TimelineUtils = (() => {
   };
 
   // Chord symbols are derived from the stored root and quality, never stored as text.
-  function chordSymbol(chord) {
+  // `flats` is optional: true spells black keys with flats (Bb) instead of sharps (A#).
+  function chordSymbol(chord, flats) {
     if (!chord) return '';
-    let symbol = NOTE_NAMES[chord.root] + (QUALITY_SUFFIX[chord.quality] || '');
+    let symbol = pcName(chord.root, flats) + (QUALITY_SUFFIX[chord.quality] || '');
     if (chord.bass !== null && chord.bass !== undefined && chord.bass !== chord.root) {
-      symbol += `/${NOTE_NAMES[chord.bass]}`;
+      symbol += `/${pcName(chord.bass, flats)}`;
     }
     return symbol;
   }
@@ -50,8 +57,8 @@ const TimelineUtils = (() => {
     return tones;
   }
 
-  function midiName(midi) {
-    return NOTE_NAMES[midi % 12] + (Math.floor(midi / 12) - 1);
+  function midiName(midi, flats) {
+    return pcName(midi % 12, flats) + (Math.floor(midi / 12) - 1);
   }
 
   // Events must be sorted by start. Returns the index of the event that contains
@@ -80,7 +87,7 @@ const TimelineUtils = (() => {
     return `${minutes}:${rest}`;
   }
 
-  return { NOTE_NAMES, chordSymbol, chordTones, midiName, findActiveIndex, formatTime };
+  return { NOTE_NAMES, FLAT_NAMES, pcName, chordSymbol, chordTones, midiName, findActiveIndex, formatTime };
 })();
 
 if (typeof module !== 'undefined') module.exports = TimelineUtils;

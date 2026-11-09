@@ -1,6 +1,7 @@
 // Melody lane: a simple piano roll. Higher notes sit higher, longer notes are wider.
 // It never keeps its own timer. It only reacts to states from the shared clock.
-function createMelodyView(container, notes, onSeek) {
+// `flats` chooses Bb over A# when naming notes.
+function createMelodyView(container, notes, onSeek, flats) {
   const PX_PER_SECOND = 40;
   const ROW_HEIGHT = 12;
   const MIN_NOTE_WIDTH = 8;
@@ -44,7 +45,7 @@ function createMelodyView(container, notes, onSeek) {
     block.style.top = `${(top - note.midi) * ROW_HEIGHT}px`;
     block.style.height = `${ROW_HEIGHT - 2}px`;
 
-    const name = TimelineUtils.midiName(note.midi);
+    const name = TimelineUtils.midiName(note.midi, flats);
     block.title = name;
     block.setAttribute(
       'aria-label',

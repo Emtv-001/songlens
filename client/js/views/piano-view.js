@@ -1,7 +1,8 @@
 // Interactive piano (C3 to B5). Highlights the notes of the active chord (teal)
 // and the current melody note (coral).
 // Reacts only to the shared clock; clicking or tapping a key plays that note.
-function createPianoView(container, notesLabel, chords, melody) {
+// `flats` chooses Bb over A# when naming notes.
+function createPianoView(container, notesLabel, chords, melody, flats) {
   const melodyNotes = melody || [];
   const FIRST = 48; // C3
   const LAST = 83; // B5
@@ -63,7 +64,7 @@ function createPianoView(container, notesLabel, chords, melody) {
     rect.setAttribute('data-midi', midi);
     rect.addEventListener('pointerdown', () => {
       playNote(midi);
-      notesLabel.textContent = TimelineUtils.midiName(midi);
+      notesLabel.textContent = TimelineUtils.midiName(midi, flats);
       rect.classList.add('pressed');
       setTimeout(() => rect.classList.remove('pressed'), 180);
     });
@@ -116,11 +117,11 @@ function createPianoView(container, notesLabel, chords, melody) {
     const parts = [];
     if (chordIndex !== -1) {
       const chord = chords[chordIndex];
-      const names = TimelineUtils.chordTones(chord).map((tone) => TimelineUtils.NOTE_NAMES[tone.midi % 12]);
-      parts.push(`${TimelineUtils.chordSymbol(chord)}: ${names.join(' · ')}`);
+      const names = TimelineUtils.chordTones(chord).map((tone) => TimelineUtils.pcName(tone.midi % 12, flats));
+      parts.push(`${TimelineUtils.chordSymbol(chord, flats)}: ${names.join(' · ')}`);
     }
     if (noteIndex !== -1) {
-      parts.push(`Melody: ${TimelineUtils.midiName(melodyNotes[noteIndex].midi)}`);
+      parts.push(`Melody: ${TimelineUtils.midiName(melodyNotes[noteIndex].midi, flats)}`);
     }
     return parts.length ? parts.join('  |  ') : 'No chord playing';
   }

@@ -41,6 +41,11 @@ function refreshDisplay() {
   workspace.display = Theory.transposeTimeline(workspace.timeline, workspace.transpose);
 }
 
+// True when the displayed key is written with flats (Bb) rather than sharps (A#).
+function displayFlats() {
+  return Theory.usesFlats(workspace.display.keyPc, workspace.display.mode);
+}
+
 function updateTransposeUi() {
   const n = workspace.transpose;
   const original = workspace.timeline;
@@ -48,8 +53,8 @@ function updateTransposeUi() {
 
   if (original.keyPc !== null && original.keyPc !== undefined) {
     const modeText = original.mode ? ` ${original.mode}` : '';
-    const from = TimelineUtils.NOTE_NAMES[original.keyPc];
-    const to = TimelineUtils.NOTE_NAMES[workspace.display.keyPc];
+    const from = TimelineUtils.pcName(original.keyPc, Theory.usesFlats(original.keyPc, original.mode));
+    const to = TimelineUtils.pcName(workspace.display.keyPc, displayFlats());
     text += n === 0 ? ` (${from}${modeText})` : ` (${from} → ${to}${modeText})`;
   }
 
@@ -129,7 +134,7 @@ function createNowView() {
       const { keyPc, mode } = workspace.display;
       const chord = chordIndex === -1 ? null : workspace.display.chords[chordIndex];
 
-      chordEl.textContent = chord ? TimelineUtils.chordSymbol(chord) : '—';
+      chordEl.textContent = chord ? TimelineUtils.chordSymbol(chord, displayFlats()) : '—';
 
       if (!chord) {
         romanEl.textContent = '—';
@@ -152,7 +157,7 @@ function createNowView() {
         noteSolfaEl.textContent = '—';
       } else {
         const note = workspace.display.melody[noteIndex];
-        noteEl.textContent = TimelineUtils.midiName(note.midi);
+        noteEl.textContent = TimelineUtils.midiName(note.midi, displayFlats());
         noteSolfaEl.textContent =
           keyPc === null || keyPc === undefined
             ? 'Set the key'
@@ -169,7 +174,7 @@ function renderSongMeta() {
   const keyText =
     t.keyPc === null || t.keyPc === undefined
       ? 'not set'
-      : `${TimelineUtils.NOTE_NAMES[t.keyPc]}${t.mode ? ` ${t.mode}` : ''}`;
+      : `${TimelineUtils.pcName(t.keyPc, displayFlats())}${t.mode ? ` ${t.mode}` : ''}`;
   const tempoText = t.bpm ? `${t.bpm} BPM` : 'not set';
   const items = [
     ['Key', keyText],
@@ -204,25 +209,26 @@ function buildViews() {
   const { chords, lyrics, melody } = workspace.display;
   const clock = workspace.clock;
   const add = (render) => workspace.unsubscribers.push(clock.subscribe(render));
+  const flats = displayFlats();
 
   add(createNowView());
 
   if (chords.length > 0) {
     const { keyPc, mode } = workspace.display;
     const romanFor = (chord) => Theory.romanNumeral(chord, keyPc, mode);
-    add(createChordView(chordStripEl, chords, seekTo, romanFor).render);
+    add(createChordView(chordStripEl, chords, seekTo, romanFor, flats).render);
   } else {
     showEmpty(chordStripEl, 'No chords yet.');
   }
 
   if (melody && melody.length > 0) {
-    add(createMelodyView(melodyLaneEl, melody, seekTo).render);
+    add(createMelodyView(melodyLaneEl, melody, seekTo, flats).render);
   } else {
     showEmpty(melodyLaneEl, 'No melody yet.');
   }
 
   // The piano is always shown so it can be explored even without chord data.
-  add(createPianoView(pianoEl, pianoNotesEl, chords, melody).render);
+  add(createPianoView(pianoEl, pianoNotesEl, chords, melody, flats).render);
 
   if (lyrics.length > 0) {
     add(createLyricsView(lyricsBoxEl, lyrics, seekTo).render);

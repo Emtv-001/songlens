@@ -32,6 +32,22 @@ const Theory = (() => {
   // "la-based" minor: la is the tonic (la ti do re mi fa sol).
   const LA_BASED_MINOR = ['la', 'te', 'ti', 'do', 'di', 're', 'ri', 'mi', 'fa', 'fi', 'sol', 'si'];
 
+  // Major keys that are written with flats (F, Bb, Eb, Ab, Db) and the sharp keys are the rest.
+  // F-sharp major is written with sharps. For a minor key we look at its relative major,
+  // so Eb minor (six flats) uses flats.
+  const FLAT_MAJOR_TONICS = [5, 10, 3, 8, 1];
+
+  // True when notes in this key are better spelled with flats (Bb) than sharps (A#).
+  // With no key set, sharps are used.
+  function usesFlats(keyPc, mode) {
+    if (!Number.isInteger(keyPc) || keyPc < 0 || keyPc > 11) return false;
+    if (mode === 'minor') {
+      const relativeMajor = (keyPc + 3) % 12;
+      return FLAT_MAJOR_TONICS.includes(relativeMajor) || relativeMajor === 6;
+    }
+    return FLAT_MAJOR_TONICS.includes(keyPc);
+  }
+
   function hasKey(keyPc) {
     return Number.isInteger(keyPc) && keyPc >= 0 && keyPc <= 11;
   }
@@ -112,7 +128,7 @@ const Theory = (() => {
     };
   }
 
-  return { romanNumeral, solfege, chordSolfege, transposeChord, transposeNote, transposeTimeline };
+  return { usesFlats, romanNumeral, solfege, chordSolfege, transposeChord, transposeNote, transposeTimeline };
 })();
 
 if (typeof module !== 'undefined') module.exports = Theory;

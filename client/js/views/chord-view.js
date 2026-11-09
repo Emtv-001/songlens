@@ -1,8 +1,8 @@
 // Chord timeline: one block per chord, sized by duration, with a moving playhead.
 // It never keeps its own timer. It only reacts to states from the shared clock.
 // getSubLabel(chord) is optional and returns small text shown under the chord name
-// (for example the Roman numeral).
-function createChordView(container, chords, onSeek, getSubLabel) {
+// (for example the Roman numeral). `flats` chooses Bb over A# when spelling chord names.
+function createChordView(container, chords, onSeek, getSubLabel, flats) {
   const PX_PER_SECOND = 40;
   const MIN_BLOCK_WIDTH = 34;
 
@@ -33,7 +33,7 @@ function createChordView(container, chords, onSeek, getSubLabel) {
     block.style.left = `${chord.start * PX_PER_SECOND}px`;
     block.style.width = `${Math.max((chord.end - chord.start) * PX_PER_SECOND - 4, MIN_BLOCK_WIDTH)}px`;
 
-    const symbol = TimelineUtils.chordSymbol(chord);
+    const symbol = TimelineUtils.chordSymbol(chord, flats);
     const sub = getSubLabel ? getSubLabel(chord) : null;
 
     const name = document.createElement('span');
