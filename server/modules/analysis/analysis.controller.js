@@ -1,9 +1,40 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Song = require('../../models/Song');
 const AnalysisRun = require('../../models/AnalysisRun');
 const SongTimeline = require('../../models/SongTimeline');
+const { QUALITIES } = require('../../utils/validateTimeline');
 
 const ACTIVE = ['queued', 'running'];
+const MAX_CHORDS = 2000;
+
+// Turns the analyzer's chords into timeline chords, or returns null if any of them is unusable.
+function toTimelineChords(list) {
+  if (!Array.isArray(list) || list.length === 0 || list.length > MAX_CHORDS) return null;
+  const out = [];
+  for (const c of list) {
+    const ok =
+      c &&
+      Number.isFinite(c.start) &&
+      Number.isFinite(c.end) &&
+      c.start >= 0 &&
+      c.end > c.start &&
+      Number.isInteger(c.root) &&
+      c.root >= 0 &&
+      c.root <= 11 &&
+      QUALITIES.includes(c.quality);
+    if (!ok) return null;
+    out.push({
+      id: crypto.randomUUID(),
+      start: c.start,
+      end: c.end,
+      root: c.root,
+      quality: c.quality,
+      bass: null,
+    });
+  }
+  return out;
+}
 
 // Only the owner (or an admin) may analyse a song. Everyone else gets the same
 // "Song not found" as elsewhere, so private songs stay private.
@@ -88,9 +119,11 @@ async function getRun(req, res, next) {
 
 // POST /songs/:songId/analysis/:runId/apply
 // Copies the chosen findings of a finished run into the song's timeline. The run itself is
-// never changed, so the original analysis stays available. Chords, melody and lyrics in the
-// timeline are not touched.
-// Body (all optional): { key: boolean, tempo: boolean, bpm: number }
+// never changed, so the original analysis stays available. Melody and lyrics are never
+// touched, and chords only when the request asks for them.
+// Body (all optional): { key: boolean, tempo: boolean, bpm: number, chords: boolean }
+// key and tempo default to true. Chords default to false, because they replace the
+// chords already saved for the song.
 async function applyRun(req, res, next) {
   try {
     const song = await loadManageableSong(req, res);
@@ -109,8 +142,9 @@ async function applyRun(req, res, next) {
     const body = req.body || {};
     const useKey = body.key !== false;
     const useTempo = body.tempo !== false;
-    if (!useKey && !useTempo) {
-      return res.status(400).json({ message: 'Choose the key, the tempo, or both.' });
+    const useChords = body.chords === true;
+    if (!useKey && !useTempo && !useChords) {
+      return res.status(400).json({ message: 'Choose the key, the tempo, the chords, or a combination.' });
     }
 
     const result = run.result;
@@ -142,6 +176,14 @@ async function applyRun(req, res, next) {
         return res.status(400).json({ message: 'This analysis did not find a tempo.' });
       }
       changes.bpm = bpm;
+    }
+
+    if (useChords) {
+      const chords = toTimelineChords(result.chords);
+      if (!chords) {
+        return res.status(400).json({ message: 'This analysis did not find usable chords.' });
+      }
+      changes.chords = chords;
     }
 
     const saved = await SongTimeline.findOneAndUpdate(
