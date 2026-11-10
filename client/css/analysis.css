@@ -1,0 +1,50 @@
+.analysis-panel {
+  margin-top: 1.5rem;
+}
+
+.analysis-note,
+.analysis-sub {
+  color: var(--soft-grey, #a9b2c5);
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.analysis-sub.warn {
+  color: var(--warning, #e6b45c);
+}
+
+.analysis-status {
+  margin: 0.5rem 0;
+}
+
+.analysis-status.error {
+  color: var(--error, #d96c73);
+}
+
+.analysis-result {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.analysis-lines {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.analysis-line {
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: var(--surface, #19233d);
+}
+
+.analysis-line label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.analysis-option {
+  display: block;
+  margin: 0.15rem 0 0.15rem 1.4rem;
+  color: var(--soft-grey, #a9b2c5);
+}

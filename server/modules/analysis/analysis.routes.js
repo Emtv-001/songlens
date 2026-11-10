@@ -1,7 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const requireAuth = require('../../middleware/requireAuth');
-const { requestAnalysis, listRuns, getRun } = require('./analysis.controller');
+const { requestAnalysis, listRuns, getRun, applyRun } = require('./analysis.controller');
 
 const router = express.Router();
 
@@ -16,5 +16,6 @@ const analysisLimiter = rateLimit({
 router.post('/:songId/analysis', requireAuth, analysisLimiter, requestAnalysis);
 router.get('/:songId/analysis', requireAuth, listRuns);
 router.get('/:songId/analysis/:runId', requireAuth, getRun);
+router.post('/:songId/analysis/:runId/apply', requireAuth, applyRun);
 
 module.exports = router;
