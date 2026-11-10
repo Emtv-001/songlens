@@ -1,4 +1,4 @@
-"""SongLens audio analysis (first version): tempo and key.
+"""SongLens audio analysis: tempo and key.
 
 Usage:
     python analyze.py path/to/audio-file
@@ -14,9 +14,9 @@ import sys
 
 import numpy as np
 import soundfile as sf
-from scipy import signal
+from scipy import ndimage, signal
 
-ENGINE = {"name": "songlens-dsp", "version": "1"}
+ENGINE = {"name": "songlens-dsp", "version": "2"}
 TARGET_SR = 22050
 MAX_SECONDS = 180
 
@@ -81,33 +81,53 @@ def estimate_tempo(x):
     scores = np.array(scores)
     best = int(np.argmax(scores))
     bpm = float(bpms[best])
-    confidence = float((scores[best] - np.median(scores)) / (scores[best] + 1e-9))
-    return round(bpm, 1), round(max(0.0, min(1.0, confidence)), 2)
+    # confidence: how much the best tempo stands out from the best rival that is not
+    # simply a neighbouring value (more than 8 % away)
+    far = np.abs(bpms - bpm) > 0.08 * bpm
+    rival = float(scores[far].max()) if far.any() else 0.0
+    confidence = 1.0 - rival / (scores[best] + 1e-9)
+    alternatives = [round(v, 1) for v in (bpm / 2.0, bpm * 2.0) if 50.0 <= v <= 220.0]
+    return round(bpm, 1), round(max(0.0, min(1.0, confidence)), 2), alternatives
 
 
-def chromagram(x):
-    nper, hop = 8192, 4096
-    freqs, _, spec = signal.stft(x, fs=TARGET_SR, nperseg=nper, noverlap=nper - hop)
-    mag = np.abs(spec)
-    keep = (freqs >= 100) & (freqs <= 2000)
-    freqs, mag = freqs[keep], mag[keep]
-    if mag.size == 0 or mag.sum() <= 0:
-        raise ValueError("No pitched content could be found.")
-
+def pitch_classes(freqs, weights, mag):
+    """Pitch-class energy of the given spectrum rows, corrected for the recording's tuning."""
     midi = 69.0 + 12.0 * np.log2(freqs / 440.0)
     dev = midi - np.round(midi)
     # tuning offset: circular mean of how far the strong peaks sit from exact semitones
-    weights = mag.sum(axis=1)
-    angle = 2 * np.pi * dev
-    offset = np.angle(np.sum(weights * np.exp(1j * angle))) / (2 * np.pi)
+    offset = np.angle(np.sum(weights * np.exp(2j * np.pi * dev))) / (2 * np.pi)
     pcs = np.round(midi - offset).astype(int) % 12
-
     # frame-wise normalisation, so loud passages do not swamp quiet ones
     norm = mag / (mag.sum(axis=0, keepdims=True) + 1e-9)
     chroma = np.zeros(12)
     for pc in range(12):
         chroma[pc] = norm[pcs == pc].sum()
     return chroma / (chroma.sum() + 1e-9)
+
+
+def chromagram(x):
+    nper, hop = 8192, 4096
+    freqs, _, spec = signal.stft(x, fs=TARGET_SR, nperseg=nper, noverlap=nper - hop)
+    mag = np.abs(spec)
+    keep = (freqs >= 60) & (freqs <= 2000)
+    freqs, mag = freqs[keep], mag[keep]
+    if mag.size == 0 or mag.sum() <= 0:
+        raise ValueError("No pitched content could be found.")
+
+    # Harmonic part only: steady notes stay, drum hits (which smear across frequencies) go.
+    harmonic = ndimage.median_filter(mag, size=(1, 9))
+    percussive = ndimage.median_filter(mag, size=(17, 1))
+    mask = harmonic**2 / (harmonic**2 + percussive**2 + 1e-12)
+    mag = mag * mask
+
+    weights = mag.sum(axis=1)
+    mid = (freqs >= 100) & (freqs <= 2000)
+    bass = freqs <= 250
+    chroma_mid = pitch_classes(freqs[mid], weights[mid], mag[mid])
+    chroma_bass = pitch_classes(freqs[bass], weights[bass], mag[bass])
+    # the bass usually plays the tonic or the chord roots, so it counts as much as the rest
+    total = chroma_mid + chroma_bass
+    return total / (total.sum() + 1e-9)
 
 
 def estimate_key(x):
@@ -119,20 +139,21 @@ def estimate_key(x):
             results.append((r, tonic, mode))
     results.sort(reverse=True)
     best, second = results[0], results[1]
-    confidence = max(0.0, min(1.0, (best[0] - second[0]) * 5.0))
+    confidence = max(0.0, min(1.0, (best[0] - second[0]) / 0.1))
     alternatives = [{"keyPc": t, "mode": m, "score": round(r, 3)} for r, t, m in results[1:4]]
     return best[1], best[2], round(confidence, 2), round(best[0], 3), alternatives
 
 
 def analyze(path):
     x, duration = load_audio(path)
-    bpm, bpm_conf = estimate_tempo(x)
+    bpm, bpm_conf, bpm_alternatives = estimate_tempo(x)
     key_pc, mode, key_conf, key_score, alternatives = estimate_key(x)
     return {
         "engine": ENGINE,
         "durationSec": round(duration, 1),
         "bpm": bpm,
         "bpmConfidence": bpm_conf,
+        "bpmAlternatives": bpm_alternatives,
         "keyPc": int(key_pc),
         "mode": mode,
         "keyConfidence": key_conf,
