@@ -1,4 +1,4 @@
-"""SongLens audio analysis: tempo and key.
+"""SongLens audio analysis: tempo, key and chords.
 
 Usage:
     python analyze.py path/to/audio-file
@@ -16,9 +16,13 @@ import numpy as np
 import soundfile as sf
 from scipy import ndimage, signal
 
-ENGINE = {"name": "songlens-dsp", "version": "2"}
+ENGINE = {"name": "songlens-dsp", "version": "3"}
 TARGET_SR = 22050
-MAX_SECONDS = 180
+MAX_SECONDS = 180        # tempo and key use the middle of long songs
+CHORD_MAX_SECONDS = 600  # chords cover the song from the start, up to this length
+CHUNK_SECONDS = 60
+MIN_CHORD_SECONDS = 0.5
+SWITCH_PENALTY = 0.3
 
 # Krumhansl-Schmuckler key profiles (index 0 = tonic).
 MAJOR = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
@@ -32,15 +36,20 @@ def load_audio(path):
         g = np.gcd(int(rate), TARGET_SR)
         mono = signal.resample_poly(mono, TARGET_SR // g, int(rate) // g).astype(np.float32)
     duration = len(data) / rate
-    # Analyse the middle of long songs: intros and outros are rarely typical.
-    limit = MAX_SECONDS * TARGET_SR
-    if len(mono) > limit:
-        start = (len(mono) - limit) // 2
-        mono = mono[start:start + limit]
+    mono = mono[: CHORD_MAX_SECONDS * TARGET_SR]
     peak = float(np.max(np.abs(mono))) if len(mono) else 0.0
     if peak < 1e-4:
         raise ValueError("The audio is silent.")
     return mono / peak, duration
+
+
+def middle(x, seconds):
+    """The middle part of long songs: intros and outros are rarely typical."""
+    limit = seconds * TARGET_SR
+    if len(x) <= limit:
+        return x
+    start = (len(x) - limit) // 2
+    return x[start:start + limit]
 
 
 def estimate_tempo(x):
@@ -144,10 +153,152 @@ def estimate_key(x):
     return best[1], best[2], round(confidence, 2), round(best[0], 3), alternatives
 
 
+NOTE_TRIADS = (("maj", (0, 4, 7)), ("min", (0, 3, 7)))
+CHORD_STATES = [(root, quality) for root in range(12) for quality, _ in NOTE_TRIADS]
+
+
+def build_templates():
+    weights = {0: 1.0, 3: 0.9, 4: 0.9, 7: 0.8}
+    rows = []
+    for root, quality in CHORD_STATES:
+        vec = np.zeros(12)
+        intervals = dict(NOTE_TRIADS)[quality]
+        for interval in intervals:
+            vec[(root + interval) % 12] = weights[interval]
+        rows.append(vec / np.linalg.norm(vec))
+    return np.array(rows)
+
+
+def diatonic_triads(key_pc, mode):
+    """The chords that belong to a key (plus the common major V in minor keys)."""
+    if mode == "major":
+        degrees = [(0, "maj"), (2, "min"), (4, "min"), (5, "maj"), (7, "maj"), (9, "min")]
+    else:
+        degrees = [(0, "min"), (3, "maj"), (5, "min"), (7, "min"), (7, "maj"), (8, "maj"), (10, "maj")]
+    return {((key_pc + d) % 12, q) for d, q in degrees}
+
+
+def frame_chroma(x):
+    """Chord-oriented chroma for every ~0.09 s: 12 numbers per frame, plus frame times."""
+    nper, hop = 8192, 2048
+    chunk = CHUNK_SECONDS * TARGET_SR
+    all_times, all_chroma, all_energy = [], [], []
+    for begin in range(0, len(x), chunk):
+        part = x[begin:begin + chunk]
+        if len(part) < nper // 2:
+            break
+        freqs, times, spec = signal.stft(part, fs=TARGET_SR, nperseg=nper, noverlap=nper - hop)
+        mag = np.abs(spec)
+        keep = (freqs >= 60) & (freqs <= 2000)
+        freqs, mag = freqs[keep], mag[keep]
+        harmonic = ndimage.median_filter(mag, size=(1, 9))
+        percussive = ndimage.median_filter(mag, size=(17, 1))
+        mag = mag * harmonic**2 / (harmonic**2 + percussive**2 + 1e-12)
+
+        midi = 69.0 + 12.0 * np.log2(freqs / 440.0)
+        dev = midi - np.round(midi)
+        weights = mag.sum(axis=1)
+        offset = np.angle(np.sum(weights * np.exp(2j * np.pi * dev))) / (2 * np.pi)
+        pcs = np.round(midi - offset).astype(int) % 12
+        onehot = np.zeros((12, len(freqs)))
+        onehot[pcs, np.arange(len(freqs))] = 1.0
+
+        mid = (freqs >= 100) & (freqs <= 2000)
+        bass = freqs <= 250
+        chroma = np.zeros((12, mag.shape[1]))
+        for band, scale in ((mid, 1.0), (bass, 0.7)):
+            band_mag = mag[band]
+            norm = band_mag / (band_mag.sum(axis=0, keepdims=True) + 1e-9)
+            chroma += scale * (onehot[:, band] @ norm)
+        energy = mag.sum(axis=0)
+
+        t = times + begin / TARGET_SR
+        last_chunk = begin + chunk >= len(x)
+        if not last_chunk:  # the edge frame is repeated by the next chunk
+            t, chroma, energy = t[:-1], chroma[:, :-1], energy[:-1]
+        all_times.append(t)
+        all_chroma.append(chroma.T)
+        all_energy.append(energy)
+    if not all_times:
+        raise ValueError("The audio is too short to find chords.")
+    return np.concatenate(all_times), np.vstack(all_chroma), np.concatenate(all_energy)
+
+
+def estimate_chords(x, key_pc, mode, key_conf):
+    times, chroma, energy = frame_chroma(x)
+    templates = build_templates()
+    norms = np.linalg.norm(chroma, axis=1, keepdims=True)
+    scores = (chroma / (norms + 1e-9)) @ templates.T  # cosine similarity, frames x 24
+
+    bonus = 0.05 if key_conf >= 0.34 else 0.02
+    belongs = diatonic_triads(key_pc, mode)
+    scores += np.array([bonus if state in belongs else 0.0 for state in CHORD_STATES])
+
+    # frames with (almost) no sound say nothing about the chord: keep whatever came before
+    loud = energy > 0.05 * np.median(energy[energy > 0]) if np.any(energy > 0) else energy > 0
+    scores[~loud] = 0.0
+
+    # Viterbi: best chord path where every change costs SWITCH_PENALTY
+    n_frames, n_states = scores.shape
+    delta = scores[0].copy()
+    back = np.zeros((n_frames, n_states), dtype=np.int16)
+    for i in range(1, n_frames):
+        best_prev = int(np.argmax(delta))
+        change = delta[best_prev] - SWITCH_PENALTY
+        stay = delta >= change
+        back[i] = np.where(stay, np.arange(n_states), best_prev)
+        delta = scores[i] + np.where(stay, delta, change)
+    path = np.zeros(n_frames, dtype=int)
+    path[-1] = int(np.argmax(delta))
+    for i in range(n_frames - 1, 0, -1):
+        path[i - 1] = back[i, path[i]]
+
+    # frame path -> segments, with boundaries halfway between frame centres
+    mids = (times[:-1] + times[1:]) / 2
+    starts = np.concatenate([[0.0], mids])
+    ends = np.concatenate([mids, [times[-1] + (times[-1] - times[-2] if n_frames > 1 else 0.1) / 2]])
+    segments = []
+    for i in range(n_frames):
+        if segments and segments[-1]["state"] == path[i]:
+            segments[-1]["end"] = ends[i]
+        else:
+            segments.append({"state": int(path[i]), "start": starts[i], "end": ends[i]})
+
+    # absorb very short segments into the previous one, then join equal neighbours
+    merged = []
+    for seg in segments:
+        if merged and seg["end"] - seg["start"] < MIN_CHORD_SECONDS:
+            merged[-1]["end"] = seg["end"]
+        else:
+            merged.append(dict(seg))
+    joined = []
+    for seg in merged:
+        if joined and joined[-1]["state"] == seg["state"]:
+            joined[-1]["end"] = seg["end"]
+        else:
+            joined.append(seg)
+
+    chords = []
+    for seg in joined:
+        root, quality = CHORD_STATES[seg["state"]]
+        chords.append(
+            {
+                "start": round(float(seg["start"]), 2),
+                "end": round(min(float(seg["end"]), len(x) / TARGET_SR), 2),
+                "root": int(root),
+                "quality": quality,
+                "bass": None,
+            }
+        )
+    return chords
+
+
 def analyze(path):
     x, duration = load_audio(path)
-    bpm, bpm_conf, bpm_alternatives = estimate_tempo(x)
-    key_pc, mode, key_conf, key_score, alternatives = estimate_key(x)
+    steady = middle(x, MAX_SECONDS)
+    bpm, bpm_conf, bpm_alternatives = estimate_tempo(steady)
+    key_pc, mode, key_conf, key_score, alternatives = estimate_key(steady)
+    chords = estimate_chords(x, key_pc, mode, key_conf)
     return {
         "engine": ENGINE,
         "durationSec": round(duration, 1),
@@ -159,6 +310,8 @@ def analyze(path):
         "keyConfidence": key_conf,
         "keyScore": key_score,
         "keyAlternatives": alternatives,
+        "chordsCoverSec": round(min(duration, CHORD_MAX_SECONDS), 1),
+        "chords": chords,
     }
 
 
