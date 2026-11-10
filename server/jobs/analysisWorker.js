@@ -1,6 +1,10 @@
 const Song = require('../models/Song');
 const AnalysisRun = require('../models/AnalysisRun');
-const analyzer = require('./analyzers/placeholder');
+// ANALYSIS_ENGINE=placeholder in .env switches back to the fake analyzer (no Python needed).
+const analyzer =
+  process.env.ANALYSIS_ENGINE === 'placeholder'
+    ? require('./analyzers/placeholder')
+    : require('./analyzers/dsp');
 
 const POLL_MS = Number(process.env.ANALYSIS_POLL_MS) || 3000;
 const STALE_MS = 10 * 60 * 1000; // a run "running" for longer than this is assumed lost
