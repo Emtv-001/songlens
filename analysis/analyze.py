@@ -1,4 +1,4 @@
-"""SongLens audio analysis: tempo, key and chords.
+"""SongLens audio analysis: tempo, key, chords and melody.
 
 Usage:
     python analyze.py path/to/audio-file
@@ -16,13 +16,21 @@ import numpy as np
 import soundfile as sf
 from scipy import ndimage, signal
 
-ENGINE = {"name": "songlens-dsp", "version": "3"}
+ENGINE = {"name": "songlens-dsp", "version": "4"}
 TARGET_SR = 22050
 MAX_SECONDS = 180        # tempo and key use the middle of long songs
 CHORD_MAX_SECONDS = 600  # chords cover the song from the start, up to this length
 CHUNK_SECONDS = 60
 MIN_CHORD_SECONDS = 0.5
 SWITCH_PENALTY = 0.3
+
+# melody tracking
+MELODY_LOW_MIDI = 43     # G2
+MELODY_HIGH_MIDI = 84    # C6
+MELODY_STEPS = 4         # grid points per semitone
+MELODY_HARMONICS = 6
+MELODY_MIN_NOTE_SECONDS = 0.1
+MELODY_MAX_NOTES = 5000
 
 # Krumhansl-Schmuckler key profiles (index 0 = tonic).
 MAJOR = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
@@ -293,12 +301,156 @@ def estimate_chords(x, key_pc, mode, key_conf):
     return chords
 
 
+def melody_salience(x):
+    """For every ~23 ms: how strongly each candidate pitch is supported by its harmonics."""
+    nper, hop = 4096, 512
+    chunk = CHUNK_SECONDS * TARGET_SR
+    midis = np.arange(MELODY_LOW_MIDI, MELODY_HIGH_MIDI, 1.0 / MELODY_STEPS)
+    f0s = 440.0 * 2.0 ** ((midis - 69.0) / 12.0)
+    bin_width = TARGET_SR / nper
+    all_times, all_sal = [], []
+    for begin in range(0, len(x), chunk):
+        part = x[begin:begin + chunk]
+        if len(part) < nper // 2:
+            break
+        freqs, times, spec = signal.stft(part, fs=TARGET_SR, nperseg=nper, noverlap=nper - hop)
+        mag = np.abs(spec)
+        harmonic = ndimage.median_filter(mag, size=(1, 11))
+        percussive = ndimage.median_filter(mag, size=(25, 1))
+        mag = np.sqrt(mag * harmonic**2 / (harmonic**2 + percussive**2 + 1e-12))
+
+        sal = np.zeros((len(f0s), mag.shape[1]))
+        for h in range(1, MELODY_HARMONICS + 1):
+            pos = h * f0s / bin_width
+            lo = np.minimum(np.floor(pos).astype(int), mag.shape[0] - 2)
+            frac = (pos - lo)[:, None]
+            sal += (0.8 ** (h - 1)) * (mag[lo] * (1 - frac) + mag[lo + 1] * frac)
+
+        t = times + begin / TARGET_SR
+        if begin + chunk < len(x):  # the edge frame is repeated by the next chunk
+            t, sal = t[:-1], sal[:, :-1]
+        all_times.append(t)
+        all_sal.append(sal.T)
+    if not all_times:
+        raise ValueError("The audio is too short to find a melody.")
+    return np.concatenate(all_times), np.vstack(all_sal), midis
+
+
+def estimate_melody(x):
+    times, sal, midis = melody_salience(x)
+    n_frames, n_cands = sal.shape
+
+    # scale so that a clear lead line scores about 1
+    frame_best = sal.max(axis=1)
+    scale = np.percentile(frame_best, 90)
+    if scale <= 0:
+        return [], 0.0
+    sal = sal / scale
+
+    # Viterbi over "unvoiced" (state 0) + one state per candidate pitch
+    unvoiced_score = 0.45
+    jump_cost = 0.03          # per grid step (a quarter of a semitone)
+    jump_cap = 0.9
+    voicing_cost = 0.25
+    steps = np.abs(np.arange(n_cands)[:, None] - np.arange(n_cands)[None, :])
+    trans = -np.minimum(jump_cost * steps, jump_cap)  # voiced -> voiced
+
+    delta_u = unvoiced_score
+    delta_v = sal[0].copy()
+    back_v = np.zeros((n_frames, n_cands), dtype=np.int16)  # previous voiced state, -1 = unvoiced
+    back_u = np.zeros(n_frames, dtype=np.int16)             # previous state of unvoiced: 0 u, 1 v
+    best_voiced_prev = np.zeros(n_frames, dtype=np.int16)
+    for i in range(1, n_frames):
+        stay_v = delta_v[None, :] + trans                   # [to, from]
+        from_v = np.argmax(stay_v, axis=1)
+        best_v = stay_v[np.arange(n_cands), from_v]
+        from_u = delta_u - voicing_cost                      # unvoiced -> voiced
+        use_u = from_u > best_v
+        new_v = np.where(use_u, from_u, best_v) + sal[i]
+        back_v[i] = np.where(use_u, -1, from_v)
+
+        v_best = int(np.argmax(delta_v))
+        to_u_from_v = delta_v[v_best] - voicing_cost
+        if to_u_from_v > delta_u:
+            new_u = to_u_from_v + unvoiced_score
+            back_u[i] = 1
+            best_voiced_prev[i] = v_best
+        else:
+            new_u = delta_u + unvoiced_score
+            back_u[i] = 0
+        delta_v, delta_u = new_v, new_u
+
+    # trace back
+    state = np.full(n_frames, -1, dtype=int)  # -1 = unvoiced, otherwise candidate index
+    in_voiced = np.max(delta_v) > delta_u
+    cur = int(np.argmax(delta_v)) if in_voiced else -1
+    for i in range(n_frames - 1, -1, -1):
+        state[i] = cur
+        if i == 0:
+            break
+        if cur >= 0:
+            cur = int(back_v[i, cur])
+        else:
+            cur = int(best_voiced_prev[i]) if back_u[i] == 1 else -1
+
+    voiced = state >= 0
+    if not np.any(voiced):
+        return [], 0.0
+    pitch = np.where(voiced, midis[np.where(voiced, state, 0)], np.nan)
+
+    # tuning of the recording: how far the tracked pitches sit from exact semitones
+    dev = pitch[voiced] - np.round(pitch[voiced])
+    offset = np.angle(np.mean(np.exp(2j * np.pi * dev))) / (2 * np.pi)
+    rounded = np.where(voiced, np.round(pitch - offset), -1).astype(int)
+
+    # smooth one-frame flickers between neighbouring semitones
+    padded = np.pad(rounded, 2, mode="edge")
+    windows = np.lib.stride_tricks.sliding_window_view(padded, 5)
+    smooth = rounded.copy()
+    for i in range(n_frames):
+        if rounded[i] >= 0:
+            w = windows[i][windows[i] >= 0]
+            if len(w) >= 3:
+                smooth[i] = int(np.round(np.median(w)))
+
+    hop_s = float(np.median(np.diff(times))) if n_frames > 1 else 0.023
+    notes = []
+    i = 0
+    while i < n_frames:
+        if smooth[i] < 0:
+            i += 1
+            continue
+        j = i
+        while j + 1 < n_frames and smooth[j + 1] == smooth[i]:
+            j += 1
+        notes.append([float(times[i] - hop_s / 2), float(times[j] + hop_s / 2), int(smooth[i])])
+        i = j + 1
+
+    # join same-pitch notes separated by a tiny gap, then drop notes that are too short
+    joined = []
+    for note in notes:
+        if joined and joined[-1][2] == note[2] and note[0] - joined[-1][1] <= 0.06:
+            joined[-1][1] = note[1]
+        else:
+            joined.append(note)
+    result = []
+    for start, end, midi in joined:
+        start = max(0.0, start)
+        if end - start >= MELODY_MIN_NOTE_SECONDS and 0 <= midi <= 127:
+            result.append(
+                {"start": round(start, 2), "end": round(min(end, len(x) / TARGET_SR), 2), "midi": int(midi)}
+            )
+    result = result[:MELODY_MAX_NOTES]
+    return result, round(float(np.mean(voiced)), 2)
+
+
 def analyze(path):
     x, duration = load_audio(path)
     steady = middle(x, MAX_SECONDS)
     bpm, bpm_conf, bpm_alternatives = estimate_tempo(steady)
     key_pc, mode, key_conf, key_score, alternatives = estimate_key(steady)
     chords = estimate_chords(x, key_pc, mode, key_conf)
+    melody, voiced_ratio = estimate_melody(x)
     return {
         "engine": ENGINE,
         "durationSec": round(duration, 1),
@@ -312,6 +464,8 @@ def analyze(path):
         "keyAlternatives": alternatives,
         "chordsCoverSec": round(min(duration, CHORD_MAX_SECONDS), 1),
         "chords": chords,
+        "melodyVoicedRatio": voiced_ratio,
+        "melody": melody,
     }
 
 

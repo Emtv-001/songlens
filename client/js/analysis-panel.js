@@ -19,7 +19,8 @@
   let message = '';
   let messageIsError = false;
   let view = { kind: 'idle' }; // idle | running | failed | done
-  let existingChords = null; // how many chords the song has saved now (null = unknown)
+  // how many chords and melody notes the song has saved now (null = unknown)
+  let existing = { chords: null, melody: null };
 
   function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -46,13 +47,17 @@
     return { ok: response.ok, status: response.status, data };
   }
 
-  async function loadExistingChords() {
+  async function loadExisting() {
+    existing = { chords: null, melody: null };
     try {
       const { ok, data } = await api(`/api/v1/songs/${encodeURIComponent(songId)}/timeline`);
-      const chords = ok && data.timeline && data.timeline.chords;
-      existingChords = Array.isArray(chords) ? chords.length : null;
+      const timeline = ok && data.timeline;
+      if (timeline) {
+        if (Array.isArray(timeline.chords)) existing.chords = timeline.chords.length;
+        if (Array.isArray(timeline.melody)) existing.melody = timeline.melody.length;
+      }
     } catch (err) {
-      existingChords = null;
+      // the counts stay unknown
     }
   }
 
@@ -68,7 +73,7 @@
       el(
         'p',
         'analysis-note',
-        'Estimates the tempo, key and chords from the audio. These are estimates, so always check them by ear. Nothing changes in your song until you press Apply.'
+        'Estimates the tempo, key, chords and melody from the audio. These are estimates, so always check them by ear. Nothing changes in your song until you press Apply.'
       )
     );
 
@@ -105,9 +110,11 @@
     const hasKey = Number.isInteger(result.keyPc) && result.mode;
     const chordList = Array.isArray(result.chords) ? result.chords : [];
     const hasChords = chordList.length > 0;
+    const noteList = Array.isArray(result.melody) ? result.melody : [];
+    const hasMelody = noteList.length > 0;
 
-    if (!hasTempo && !hasKey && !hasChords) {
-      box.appendChild(el('p', 'analysis-status', 'The analysis did not find a tempo, a key or chords.'));
+    if (!hasTempo && !hasKey && !hasChords && !hasMelody) {
+      box.appendChild(el('p', 'analysis-status', 'The analysis did not find a tempo, a key, chords or a melody.'));
       return box;
     }
 
@@ -116,6 +123,7 @@
     let keyBox = null;
     let tempoBox = null;
     let chordBox = null;
+    let melodyBox = null;
 
     if (hasKey) {
       const row = el('div', 'analysis-line');
@@ -177,7 +185,7 @@
       const row = el('div', 'analysis-line');
       chordBox = el('input');
       chordBox.type = 'checkbox';
-      chordBox.checked = existingChords === 0; // never replace saved chords unless asked
+      chordBox.checked = existing.chords === 0; // never replace saved chords unless asked
       const label = el('label');
       label.appendChild(chordBox);
       label.appendChild(document.createTextNode(` Chords: ${chordList.length} found`));
@@ -188,20 +196,48 @@
       row.appendChild(
         el('p', 'analysis-sub', `Starts with: ${preview.join(' · ')}${chordList.length > 8 ? ' …' : ''}`)
       );
-      if (existingChords > 0) {
+      if (existing.chords > 0) {
         row.appendChild(
-          el('p', 'analysis-sub warn', `Applying replaces the ${existingChords} chord${existingChords === 1 ? '' : 's'} saved for this song.`)
+          el('p', 'analysis-sub warn', `Applying replaces the ${existing.chords} chord${existing.chords === 1 ? '' : 's'} saved for this song.`)
         );
-      } else if (existingChords === null) {
+      } else if (existing.chords === null) {
         row.appendChild(el('p', 'analysis-sub warn', 'Applying replaces any chords saved for this song.'));
       }
       row.appendChild(el('p', 'analysis-sub', 'Chord times are estimates. Fine-tune them in the editor afterwards.'));
       lines.appendChild(row);
     }
 
+    if (hasMelody) {
+      const row = el('div', 'analysis-line');
+      melodyBox = el('input');
+      melodyBox.type = 'checkbox';
+      melodyBox.checked = existing.melody === 0; // never replace a saved melody unless asked
+      const label = el('label');
+      label.appendChild(melodyBox);
+      label.appendChild(document.createTextNode(` Melody: ${noteList.length} notes found`));
+      row.appendChild(label);
+
+      const flats = hasKey ? Theory.usesFlats(result.keyPc, result.mode) : false;
+      const preview = noteList.slice(0, 8).map((n) => TimelineUtils.midiName(n.midi, flats));
+      row.appendChild(
+        el('p', 'analysis-sub', `Starts with: ${preview.join(' · ')}${noteList.length > 8 ? ' …' : ''}`)
+      );
+      if (existing.melody > 0) {
+        row.appendChild(
+          el('p', 'analysis-sub warn', `Applying replaces the ${existing.melody} note${existing.melody === 1 ? '' : 's'} saved for this song.`)
+        );
+      } else if (existing.melody === null) {
+        row.appendChild(el('p', 'analysis-sub warn', 'Applying replaces any melody saved for this song.'));
+      }
+      row.appendChild(
+        el('p', 'analysis-sub', 'Rough draft: it follows the main line only. Listen with the piano view and fix it in the editor.')
+      );
+      lines.appendChild(row);
+    }
+
     box.appendChild(lines);
     box.appendChild(
-      el('p', 'analysis-sub', 'Only what you tick is applied. Your melody and lyrics are never changed.')
+      el('p', 'analysis-sub', 'Only what you tick is applied. Your lyrics are never changed.')
     );
 
     const apply = el('button', 'btn btn-small', busy ? 'Applying…' : 'Apply to this song');
@@ -211,12 +247,13 @@
       const useKey = Boolean(keyBox && keyBox.checked);
       const useTempo = Boolean(tempoBox && tempoBox.checked);
       const useChords = Boolean(chordBox && chordBox.checked);
-      if (!useKey && !useTempo && !useChords) {
+      const useMelody = Boolean(melodyBox && melodyBox.checked);
+      if (!useKey && !useTempo && !useChords && !useMelody) {
         say('Tick at least one thing to apply.', true);
         render();
         return;
       }
-      const body = { key: useKey, tempo: useTempo, chords: useChords };
+      const body = { key: useKey, tempo: useTempo, chords: useChords, melody: useMelody };
       const picked = tempoRadios.find((r) => r.checked);
       if (useTempo && picked) body.bpm = Number(picked.value);
 
@@ -251,7 +288,7 @@
     }
     const { ok, data } = await api(`${base}/${encodeURIComponent(runSummary._id)}`);
     if (ok && data.run) {
-      await loadExistingChords();
+      await loadExisting();
       view = { kind: 'done', run: data.run };
     } else {
       view = { kind: 'idle' };
@@ -278,7 +315,7 @@
         }
         continue;
       }
-      if (run.status === 'succeeded') await loadExistingChords();
+      if (run.status === 'succeeded') await loadExisting();
       view = run.status === 'failed'
         ? { kind: 'failed', error: run.error || 'Unknown error.' }
         : { kind: 'done', run };

@@ -174,7 +174,7 @@ function makeCard(song) {
 
     const link = document.createElement('a');
     link.className = 'card-link';
-    link.href = `/play.html?id=${encodeURIComponent(song._id)}`;
+    link.href = `/workspace.html?id=${encodeURIComponent(song._id)}`;
     link.textContent = 'Open';
 
     actions.append(
@@ -337,7 +337,7 @@ form.addEventListener('submit', async (event) => {
     pendingSongId = null;
     form.reset();
     showMessage('Upload complete! Opening your song…', 'success');
-    window.location.href = `/play.html?id=${encodeURIComponent(finishedId)}`;
+    window.location.href = `/workspace.html?id=${encodeURIComponent(finishedId)}`;
   } catch (err) {
     showMessage(err.message, 'error');
     submitBtn.disabled = false;

@@ -7,6 +7,7 @@ const { QUALITIES } = require('../../utils/validateTimeline');
 
 const ACTIVE = ['queued', 'running'];
 const MAX_CHORDS = 2000;
+const MAX_NOTES = 5000;
 
 // Turns the analyzer's chords into timeline chords, or returns null if any of them is unusable.
 function toTimelineChords(list) {
@@ -32,6 +33,26 @@ function toTimelineChords(list) {
       quality: c.quality,
       bass: null,
     });
+  }
+  return out;
+}
+
+// Same for the melody notes.
+function toTimelineMelody(list) {
+  if (!Array.isArray(list) || list.length === 0 || list.length > MAX_NOTES) return null;
+  const out = [];
+  for (const n of list) {
+    const ok =
+      n &&
+      Number.isFinite(n.start) &&
+      Number.isFinite(n.end) &&
+      n.start >= 0 &&
+      n.end > n.start &&
+      Number.isInteger(n.midi) &&
+      n.midi >= 0 &&
+      n.midi <= 127;
+    if (!ok) return null;
+    out.push({ id: crypto.randomUUID(), start: n.start, end: n.end, midi: n.midi });
   }
   return out;
 }
@@ -119,11 +140,10 @@ async function getRun(req, res, next) {
 
 // POST /songs/:songId/analysis/:runId/apply
 // Copies the chosen findings of a finished run into the song's timeline. The run itself is
-// never changed, so the original analysis stays available. Melody and lyrics are never
-// touched, and chords only when the request asks for them.
-// Body (all optional): { key: boolean, tempo: boolean, bpm: number, chords: boolean }
-// key and tempo default to true. Chords default to false, because they replace the
-// chords already saved for the song.
+// never changed, so the original analysis stays available. Lyrics are never touched.
+// Body (all optional): { key: boolean, tempo: boolean, bpm: number, chords: boolean, melody: boolean }
+// key and tempo default to true. Chords and melody default to false, because they replace
+// the chords or melody already saved for the song.
 async function applyRun(req, res, next) {
   try {
     const song = await loadManageableSong(req, res);
@@ -143,8 +163,9 @@ async function applyRun(req, res, next) {
     const useKey = body.key !== false;
     const useTempo = body.tempo !== false;
     const useChords = body.chords === true;
-    if (!useKey && !useTempo && !useChords) {
-      return res.status(400).json({ message: 'Choose the key, the tempo, the chords, or a combination.' });
+    const useMelody = body.melody === true;
+    if (!useKey && !useTempo && !useChords && !useMelody) {
+      return res.status(400).json({ message: 'Choose the key, the tempo, the chords, the melody, or a combination.' });
     }
 
     const result = run.result;
@@ -184,6 +205,14 @@ async function applyRun(req, res, next) {
         return res.status(400).json({ message: 'This analysis did not find usable chords.' });
       }
       changes.chords = chords;
+    }
+
+    if (useMelody) {
+      const melody = toTimelineMelody(result.melody);
+      if (!melody) {
+        return res.status(400).json({ message: 'This analysis did not find a usable melody.' });
+      }
+      changes.melody = melody;
     }
 
     const saved = await SongTimeline.findOneAndUpdate(
