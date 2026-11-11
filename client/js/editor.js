@@ -214,8 +214,7 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     chordsGroup,
     melodyGroup,
     lyricsGroup,
-    h('div', { class: 'editor-actions' }, saveBtn, revertBtn),
-    message
+    h('div', { class: 'editor-actions editor-savebar' }, saveBtn, revertBtn, message)
   );
 
   // ---- Rows ----
