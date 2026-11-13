@@ -1,5 +1,6 @@
 // Interactive piano (C3 to B5). Highlights the notes of the active chord (teal)
-// and the current melody note (coral).
+// and the current melody note (coral). The listener can choose to see the chords, the
+// melody, both or nothing (see ViewOptions); the keyboard itself always stays.
 // Reacts only to the shared clock; clicking or tapping a key plays that note.
 // `flats` chooses Bb over A# when naming notes.
 function createPianoView(container, notesLabel, chords, melody, flats) {
@@ -12,6 +13,10 @@ function createPianoView(container, notesLabel, chords, melody, flats) {
   const BLACK_H = 80;
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const BLACK_PITCH_CLASSES = new Set([1, 3, 6, 8, 10]);
+
+  const choice = typeof ViewOptions !== 'undefined' ? ViewOptions.get('piano') : 'both';
+  const showChords = choice === 'both' || choice === 'chords';
+  const showMelody = choice === 'both' || choice === 'melody';
 
   const keys = new Map();
   let activeIndex = -1;
@@ -99,7 +104,9 @@ function createPianoView(container, notesLabel, chords, melody, flats) {
   }
 
   container.replaceChildren(svg);
-  notesLabel.textContent = 'No chord playing';
+
+  const idleText = showChords || showMelody ? 'No chord playing' : 'Nothing selected to show';
+  notesLabel.textContent = idleText;
 
   function clearHighlights() {
     keys.forEach((key) => {
@@ -118,17 +125,17 @@ function createPianoView(container, notesLabel, chords, melody, flats) {
     if (chordIndex !== -1) {
       const chord = chords[chordIndex];
       const names = TimelineUtils.chordTones(chord).map((tone) => TimelineUtils.pcName(tone.midi % 12, flats));
-      parts.push(`${TimelineUtils.chordSymbol(chord, flats)}: ${names.join(' · ')}`);
+      parts.push(`${TimelineUtils.chordSymbol(chord, flats)}: ${names.join(' \u00b7 ')}`);
     }
     if (noteIndex !== -1) {
       parts.push(`Melody: ${TimelineUtils.midiName(melodyNotes[noteIndex].midi, flats)}`);
     }
-    return parts.length ? parts.join('  |  ') : 'No chord playing';
+    return parts.length ? parts.join('  |  ') : idleText;
   }
 
   function render(state) {
-    const index = TimelineUtils.findActiveIndex(chords, state.time);
-    const noteIndex = TimelineUtils.findActiveIndex(melodyNotes, state.time);
+    const index = showChords ? TimelineUtils.findActiveIndex(chords, state.time) : -1;
+    const noteIndex = showMelody ? TimelineUtils.findActiveIndex(melodyNotes, state.time) : -1;
     if (index === activeIndex && noteIndex === activeNoteIndex) return;
 
     if (index !== activeIndex) {

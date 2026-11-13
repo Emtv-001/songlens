@@ -288,6 +288,7 @@ function buildViews() {
     showEmpty(lyricsBoxEl, 'No lyrics yet.');
   }
 
+  ViewOptions.apply();
   hintEl.hidden =
     chords.length > 0 || lyrics.length > 0 || (melody && melody.length > 0) || !workspace.canEdit;
 }
@@ -368,6 +369,13 @@ audio.addEventListener('error', async () => {
     }, 3000);
   }
 });
+
+ViewOptions.mount(
+  { chords: chordStripEl, melody: melodyLaneEl, staff: staffEl, piano: pianoEl, lyrics: lyricsBoxEl },
+  () => {
+    if (workspace.clock) buildViews();
+  }
+);
 
 staffLabelsEl.value = getStaffLabels();
 staffLabelsEl.addEventListener('change', () => {
