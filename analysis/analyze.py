@@ -37,6 +37,7 @@ LOOP_SAME = 0.6                # how much two windows must overlap to be the sam
 LOOP_MIN_SECTION = 12.0        # seconds
 LOOP_MIN_CHORDS = 2            # chords in one cycle
 LOOP_MAX_CHORDS = 8
+LOOP_REQUIRED_SHARE = 0.12     # a chord with this share of the time must be in the pattern
 LOOP_COVERAGE = 0.5            # share of a section that its pattern must explain
 
 # melody tracking
@@ -481,6 +482,13 @@ def section_pattern(members):
                 k += 1
         return found
 
+    # chords that take a real share of the section's time must be part of its progression
+    time_by_class = {}
+    for c in members:
+        time_by_class[chord_class(c)] = time_by_class.get(chord_class(c), 0.0) + (c["end"] - c["start"])
+    section_time = sum(time_by_class.values()) or 1.0
+    required = {k for k, v in time_by_class.items() if v / section_time >= LOOP_REQUIRED_SHARE}
+
     options = []  # (coverage, n, gram, starts)
     for n in range(LOOP_MIN_CHORDS, LOOP_MAX_CHORDS + 1):
         if m < 2 * n:
@@ -488,7 +496,7 @@ def section_pattern(members):
         grams = {tuple(classes[k:k + n]) for k in range(m - n + 1)}
         top = None
         for gram in grams:
-            if len(set(gram)) < 2:
+            if len(set(gram)) < 2 or not required <= set(gram):
                 continue
             starts = occurrences(gram)
             if len(starts) >= 2 and (top is None or len(starts) > len(top[1])):
