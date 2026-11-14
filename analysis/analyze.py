@@ -1,4 +1,4 @@
-"""SongLens audio analysis: tempo, key, chords and melody.
+"""SongLens audio analysis: tempo, key (with key changes), chords (with repeating sections) and melody.
 
 Usage:
     python analyze.py path/to/audio-file
@@ -16,13 +16,25 @@ import numpy as np
 import soundfile as sf
 from scipy import ndimage, signal
 
-ENGINE = {"name": "songlens-dsp", "version": "4"}
+ENGINE = {"name": "songlens-dsp", "version": "5"}
 TARGET_SR = 22050
 MAX_SECONDS = 180        # tempo and key use the middle of long songs
 CHORD_MAX_SECONDS = 600  # chords cover the song from the start, up to this length
 CHUNK_SECONDS = 60
 MIN_CHORD_SECONDS = 0.5
 SWITCH_PENALTY = 0.3
+
+# key changes
+KEY_BLOCK_SECONDS = 4.0        # the key is judged on blocks of this length
+KEY_SMOOTH_BLOCKS = 3          # each judgement looks at this many blocks (12 s)
+KEY_SWITCH_PENALTY = 0.6       # evidence a new key needs before it replaces the current one
+KEY_HOME_BONUS = 0.03          # a small lean towards the key of the whole song
+KEY_MIN_SECTION_SECONDS = 16.0
+
+# repeating chord progressions
+LOOP_MIN_LENGTH = 2            # chords in one cycle
+LOOP_MAX_LENGTH = 8
+LOOP_MIN_CYCLES = 2.0
 
 # melody tracking
 MELODY_LOW_MIDI = 43     # G2
@@ -232,15 +244,138 @@ def frame_chroma(x):
     return np.concatenate(all_times), np.vstack(all_chroma), np.concatenate(all_energy)
 
 
-def estimate_chords(x, key_pc, mode, key_conf):
-    times, chroma, energy = frame_chroma(x)
+KEY_STATES = [(tonic, mode) for tonic in range(12) for mode in ("major", "minor")]
+
+
+def key_scores(chroma):
+    """Correlation of each chroma row (n x 12) with the 24 key profiles: n x 24."""
+    c = chroma - chroma.mean(axis=1, keepdims=True)
+    c = c / (np.linalg.norm(c, axis=1, keepdims=True) + 1e-9)
+    out = np.zeros((len(chroma), len(KEY_STATES)))
+    for k, (tonic, mode) in enumerate(KEY_STATES):
+        p = np.roll(MAJOR if mode == "major" else MINOR, tonic)
+        p = (p - p.mean()) / np.linalg.norm(p - p.mean())
+        out[:, k] = c @ p
+    return out
+
+
+def is_relative(a, b):
+    """True for a major key and its relative minor (C major and A minor)."""
+    (ta, ma), (tb, mb) = a, b
+    if ma == mb:
+        return False
+    major, minor = (ta, tb) if ma == "major" else (tb, ta)
+    return (major - minor) % 12 == 3
+
+
+def estimate_key_sections(times, chroma, energy, home_key):
+    """Where the key stays the same and where it changes.
+
+    Returns a list of {start, end, keyPc, mode, confidence} that covers the whole song. A song
+    that never changes key gives exactly one section.
+    """
+    total = float(times[-1]) if len(times) else 0.0
+    hop = float(np.median(np.diff(times))) if len(times) > 1 else 0.1
+    per_block = max(1, int(round(KEY_BLOCK_SECONDS / hop)))
+    n_blocks = int(len(times) // per_block)
+    home = KEY_STATES.index(home_key)
+    if n_blocks < KEY_SMOOTH_BLOCKS + 2:
+        return [{"start": 0.0, "end": round(total, 2), "keyPc": home_key[0], "mode": home_key[1], "confidence": 0.0}]
+
+    loud = (energy > 0.05 * np.median(energy[energy > 0])).astype(float) if np.any(energy > 0) else np.ones(len(energy))
+    blocks = np.zeros((n_blocks, 12))
+    for b in range(n_blocks):
+        sl = slice(b * per_block, (b + 1) * per_block)
+        blocks[b] = (chroma[sl] * loud[sl, None]).sum(axis=0)
+    # each judgement sees the neighbouring blocks too, so one odd bar cannot flip the key
+    kernel = np.ones(KEY_SMOOTH_BLOCKS)
+    smooth = np.vstack([np.convolve(blocks[:, pc], kernel, mode="same") for pc in range(12)]).T
+    scores = key_scores(smooth)
+    scores[:, home] += KEY_HOME_BONUS
+    silent = blocks.sum(axis=1) <= 1e-6
+    scores[silent] = 0.0
+
+    # Viterbi over the 24 keys; every change of key costs KEY_SWITCH_PENALTY
+    n_states = scores.shape[1]
+    delta = scores[0].copy()
+    back = np.zeros((n_blocks, n_states), dtype=np.int16)
+    for i in range(1, n_blocks):
+        best_prev = int(np.argmax(delta))
+        change = delta[best_prev] - KEY_SWITCH_PENALTY
+        stay = delta >= change
+        back[i] = np.where(stay, np.arange(n_states), best_prev)
+        delta = scores[i] + np.where(stay, delta, change)
+    path = np.zeros(n_blocks, dtype=int)
+    path[-1] = int(np.argmax(delta))
+    for i in range(n_blocks - 1, 0, -1):
+        path[i - 1] = back[i, path[i]]
+
+    # blocks -> sections
+    sections = []
+    for b in range(n_blocks):
+        if sections and sections[-1]["state"] == path[b]:
+            sections[-1]["last"] = b
+        else:
+            sections.append({"state": int(path[b]), "first": b, "last": b})
+
+    def length(sec):
+        return (sec["last"] - sec["first"] + 1) * per_block * hop
+
+    # absorb sections that are too short, and flips between relative major/minor
+    changed = True
+    while changed and len(sections) > 1:
+        changed = False
+        for i, sec in enumerate(sections):
+            relative_flip = i > 0 and is_relative(KEY_STATES[sec["state"]], KEY_STATES[sections[i - 1]["state"]])
+            if length(sec) < KEY_MIN_SECTION_SECONDS or relative_flip:
+                target = i - 1 if i > 0 else 1
+                other = sections[target]
+                other["first"] = min(other["first"], sec["first"])
+                other["last"] = max(other["last"], sec["last"])
+                del sections[i]
+                changed = True
+                break
+        merged = []
+        for sec in sections:
+            if merged and merged[-1]["state"] == sec["state"]:
+                merged[-1]["last"] = sec["last"]
+            else:
+                merged.append(sec)
+        if len(merged) != len(sections):
+            sections = merged
+            changed = True
+
+    result = []
+    for i, sec in enumerate(sections):
+        a, z = sec["first"], sec["last"]
+        rows = scores[a:z + 1]
+        top2 = np.sort(rows, axis=1)[:, -2:]
+        confidence = float(np.clip(np.mean(top2[:, 1] - top2[:, 0]) / 0.1, 0.0, 1.0))
+        tonic, mode = KEY_STATES[sec["state"]]
+        start = 0.0 if i == 0 else float(times[a * per_block])
+        end = total if i == len(sections) - 1 else float(times[(z + 1) * per_block])
+        result.append(
+            {"start": round(start, 2), "end": round(end, 2), "keyPc": int(tonic), "mode": mode, "confidence": round(confidence, 2)}
+        )
+    for i in range(1, len(result)):  # sections touch each other exactly
+        result[i]["start"] = result[i - 1]["end"]
+    return result
+
+
+def estimate_chords(x, times, chroma, energy, key_sections, key_conf):
     templates = build_templates()
     norms = np.linalg.norm(chroma, axis=1, keepdims=True)
     scores = (chroma / (norms + 1e-9)) @ templates.T  # cosine similarity, frames x 24
 
+    # chords that belong to the key sounding at that moment get a small lean
     bonus = 0.05 if key_conf >= 0.34 else 0.02
-    belongs = diatonic_triads(key_pc, mode)
-    scores += np.array([bonus if state in belongs else 0.0 for state in CHORD_STATES])
+    per_key = {}
+    for sec in key_sections:
+        belongs = diatonic_triads(sec["keyPc"], sec["mode"])
+        per_key[(sec["keyPc"], sec["mode"])] = np.array([bonus if st in belongs else 0.0 for st in CHORD_STATES])
+    for sec in key_sections:
+        inside = (times >= sec["start"]) & (times < sec["end"] if sec is not key_sections[-1] else times >= sec["start"])
+        scores[inside] += per_key[(sec["keyPc"], sec["mode"])]
 
     # frames with (almost) no sound say nothing about the chord: keep whatever came before
     loud = energy > 0.05 * np.median(energy[energy > 0]) if np.any(energy > 0) else energy > 0
@@ -299,6 +434,77 @@ def estimate_chords(x, key_pc, mode, key_conf):
             }
         )
     return chords
+
+
+def find_chord_sections(chords):
+    """Groups the chord list into repeating progressions ("loops") and everything else.
+
+    A loop is a short chord pattern (2 to 8 chords) that comes round at least twice. Chords that
+    do not belong to a loop are listed as "free" sections. Together the sections cover every
+    chord exactly once, in order, so the full chord list is still the truth for playback.
+    """
+    symbols = [(c["root"], c["quality"]) for c in chords]
+    n = len(symbols)
+    sections = []
+    free_from = 0
+    i = 0
+
+    def close_free(upto):
+        if upto > free_from:
+            sections.append({"kind": "free", "first": free_from, "last": upto - 1})
+
+    while i < n:
+        best = None
+        for p in range(LOOP_MIN_LENGTH, LOOP_MAX_LENGTH + 1):
+            if i + 2 * p > n:
+                break
+            mismatches = 0
+            k = i
+            while k + p < n:
+                if symbols[k] != symbols[k + p]:
+                    mismatches += 1
+                    # a stray wrong chord is tolerated, but only one per two full cycles
+                    if mismatches > (k + p - i) // (2 * p):
+                        break
+                k += 1
+            span = k + p - i
+            # do not end on a stray chord: trim back to the last chord that really repeats
+            while span > p and symbols[i + span - 1] != symbols[i + span - 1 - p]:
+                span -= 1
+            # the cycle must really repeat (not just one chord twice)
+            if span >= LOOP_MIN_CYCLES * p and len(set(symbols[i:i + p])) >= 2:
+                # a cycle longer than needed is a worse description than a shorter one
+                if best is None or span > best[1] + p:
+                    best = (p, span)
+        if best is None:
+            i += 1
+            continue
+        p, span = best
+        close_free(i)
+        cycles = span / p
+        pattern = []
+        for pos in range(p):
+            votes = {}
+            for k in range(i + pos, i + span, p):
+                votes[symbols[k]] = votes.get(symbols[k], 0) + 1
+            pattern.append(max(votes, key=votes.get))
+        sections.append(
+            {
+                "kind": "loop",
+                "first": i,
+                "last": i + span - 1,
+                "pattern": [{"root": int(r), "quality": q} for r, q in pattern],
+                "cycles": round(cycles, 1),
+            }
+        )
+        i += span
+        free_from = i
+    close_free(n)
+
+    for sec in sections:
+        sec["start"] = chords[sec["first"]]["start"]
+        sec["end"] = chords[sec["last"]]["end"]
+    return sections
 
 
 def melody_salience(x):
@@ -449,7 +655,10 @@ def analyze(path):
     steady = middle(x, MAX_SECONDS)
     bpm, bpm_conf, bpm_alternatives = estimate_tempo(steady)
     key_pc, mode, key_conf, key_score, alternatives = estimate_key(steady)
-    chords = estimate_chords(x, key_pc, mode, key_conf)
+    times, chroma, energy = frame_chroma(x)
+    key_sections = estimate_key_sections(times, chroma, energy, (key_pc, mode))
+    chords = estimate_chords(x, times, chroma, energy, key_sections, key_conf)
+    chord_sections = find_chord_sections(chords)
     melody, voiced_ratio = estimate_melody(x)
     return {
         "engine": ENGINE,
@@ -462,8 +671,10 @@ def analyze(path):
         "keyConfidence": key_conf,
         "keyScore": key_score,
         "keyAlternatives": alternatives,
+        "keySections": key_sections,
         "chordsCoverSec": round(min(duration, CHORD_MAX_SECONDS), 1),
         "chords": chords,
+        "chordSections": chord_sections,
         "melodyVoicedRatio": voiced_ratio,
         "melody": melody,
     }
