@@ -32,9 +32,12 @@ KEY_HOME_BONUS = 0.03          # a small lean towards the key of the whole song
 KEY_MIN_SECTION_SECONDS = 16.0
 
 # repeating chord progressions
-LOOP_MIN_LENGTH = 2            # chords in one cycle
-LOOP_MAX_LENGTH = 8
-LOOP_MIN_CYCLES = 2.0
+LOOP_WINDOW = 16.0             # seconds looked at when deciding which chords are "in use"
+LOOP_SAME = 0.6                # how much two windows must overlap to be the same section
+LOOP_MIN_SECTION = 12.0        # seconds
+LOOP_MIN_CHORDS = 2            # chords in one cycle
+LOOP_MAX_CHORDS = 8
+LOOP_COVERAGE = 0.5            # share of a section that its pattern must explain
 
 # melody tracking
 MELODY_LOW_MIDI = 43     # G2
@@ -436,75 +439,153 @@ def estimate_chords(x, times, chroma, energy, key_sections, key_conf):
     return chords
 
 
-def find_chord_sections(chords):
-    """Groups the chord list into repeating progressions ("loops") and everything else.
+def chord_class(chord):
+    """Chords that are easily mistaken for each other share a class: a minor chord and its relative
+    major (Fm and A-flat, Gm and B-flat, Cm and E-flat) count as the same."""
+    return chord["root"] if chord["quality"] == "maj" else (chord["root"] + 3) % 12
 
-    A loop is a short chord pattern (2 to 8 chords) that comes round at least twice. Chords that
-    do not belong to a loop are listed as "free" sections. Together the sections cover every
-    chord exactly once, in order, so the full chord list is still the truth for playback.
+
+def class_hist(chords, t_from, t_to):
+    """How long each chord class sounds inside [t_from, t_to), as shares that add up to 1."""
+    hist = np.zeros(12)
+    for c in chords:
+        overlap = min(c["end"], t_to) - max(c["start"], t_from)
+        if overlap > 0:
+            hist[chord_class(c)] += overlap
+    total = hist.sum()
+    return hist / total if total > 0 else hist
+
+
+def section_pattern(members):
+    """The progression that comes round most often inside a section.
+
+    Returns (pattern, cycles) where pattern is a list of (root, quality), or (None, 0.0) when
+    nothing repeats.
     """
-    symbols = [(c["root"], c["quality"]) for c in chords]
-    n = len(symbols)
-    sections = []
-    free_from = 0
-    i = 0
+    seq = []
+    for c in members:  # joined neighbours of the same class count once
+        if not seq or seq[-1][0] != chord_class(c):
+            seq.append((chord_class(c), (c["root"], c["quality"])))
+    classes = [k for k, _ in seq]
+    m = len(classes)
 
-    def close_free(upto):
-        if upto > free_from:
-            sections.append({"kind": "free", "first": free_from, "last": upto - 1})
-
-    while i < n:
-        best = None
-        for p in range(LOOP_MIN_LENGTH, LOOP_MAX_LENGTH + 1):
-            if i + 2 * p > n:
-                break
-            mismatches = 0
-            k = i
-            while k + p < n:
-                if symbols[k] != symbols[k + p]:
-                    mismatches += 1
-                    # a stray wrong chord is tolerated, but only one per two full cycles
-                    if mismatches > (k + p - i) // (2 * p):
-                        break
+    def occurrences(gram):
+        """Start positions of the pattern, counted without overlap from left to right."""
+        n = len(gram)
+        found, k = [], 0
+        while k <= m - n:
+            if tuple(classes[k:k + n]) == gram:
+                found.append(k)
+                k += n
+            else:
                 k += 1
-            span = k + p - i
-            # do not end on a stray chord: trim back to the last chord that really repeats
-            while span > p and symbols[i + span - 1] != symbols[i + span - 1 - p]:
-                span -= 1
-            # the cycle must really repeat (not just one chord twice)
-            if span >= LOOP_MIN_CYCLES * p and len(set(symbols[i:i + p])) >= 2:
-                # a cycle longer than needed is a worse description than a shorter one
-                if best is None or span > best[1] + p:
-                    best = (p, span)
-        if best is None:
-            i += 1
-            continue
-        p, span = best
-        close_free(i)
-        cycles = span / p
-        pattern = []
-        for pos in range(p):
-            votes = {}
-            for k in range(i + pos, i + span, p):
-                votes[symbols[k]] = votes.get(symbols[k], 0) + 1
-            pattern.append(max(votes, key=votes.get))
-        sections.append(
-            {
-                "kind": "loop",
-                "first": i,
-                "last": i + span - 1,
-                "pattern": [{"root": int(r), "quality": q} for r, q in pattern],
-                "cycles": round(cycles, 1),
-            }
-        )
-        i += span
-        free_from = i
-    close_free(n)
+        return found
 
+    options = []  # (coverage, n, gram, starts)
+    for n in range(LOOP_MIN_CHORDS, LOOP_MAX_CHORDS + 1):
+        if m < 2 * n:
+            break
+        grams = {tuple(classes[k:k + n]) for k in range(m - n + 1)}
+        top = None
+        for gram in grams:
+            if len(set(gram)) < 2:
+                continue
+            starts = occurrences(gram)
+            if len(starts) >= 2 and (top is None or len(starts) > len(top[1])):
+                top = (gram, starts)
+        if top:
+            options.append((len(top[1]) * n / m, n, top[0], top[1]))
+    if not options:
+        return None, 0.0
+    # the shortest pattern that explains nearly as much as the best one
+    best_cover = max(o[0] for o in options)
+    if best_cover < LOOP_COVERAGE:
+        return None, 0.0
+    coverage, n, gram, starts = next(o for o in options if o[0] >= best_cover - 0.08)
+
+    # name each chord of the pattern by the real chord found most often at that position
+    votes = [dict() for _ in range(n)]
+    for k in starts:
+        for pos in range(n):
+            sym = seq[k + pos][1]
+            votes[pos][sym] = votes[pos].get(sym, 0) + 1
+    pattern = [max(v, key=v.get) for v in votes]
+    return pattern, round(m / n, 1)
+
+
+def find_chord_sections(chords):
+    """Splits the chord list into sections where the same few chords keep coming round.
+
+    A new section starts where the set of chords in use changes (the song moves to a different
+    progression). Look-alike chords (Fm for A-flat) count as the same chord, so one wrong chord
+    does not start a new section. Every chord belongs to exactly one section, in order, so the
+    full chord list is still the truth for playback.
+    """
+    if not chords:
+        return []
+    total = chords[-1]["end"]
+    step = LOOP_WINDOW / 4.0
+    boundaries = []  # times at which a new section starts
+
+    if total >= 2 * LOOP_WINDOW:
+        section_start = 0.0
+        section_sum = class_hist(chords, 0.0, LOOP_WINDOW)
+        section_windows = 1
+        t = step
+        while t + LOOP_WINDOW <= total + step:
+            h = class_hist(chords, t, t + LOOP_WINDOW)
+            nxt = class_hist(chords, t + step, t + step + LOOP_WINDOW)
+            section_hist = section_sum / section_windows  # the section so far, averaged over its windows
+            differs = np.minimum(h, section_hist).sum() < LOOP_SAME
+            stays = np.minimum(nxt, section_hist).sum() < LOOP_SAME
+            if differs and stays and t - section_start >= LOOP_MIN_SECTION:
+                # the change happens where the chords just before and just after overlap the least
+                best_time, best_overlap = None, 2.0
+                for c in chords:
+                    cut = c["start"]
+                    if not (t - LOOP_WINDOW <= cut <= t + LOOP_WINDOW) or cut - section_start < LOOP_MIN_SECTION / 2 or total - cut < LOOP_MIN_SECTION:
+                        continue
+                    left = class_hist(chords, max(section_start, cut - LOOP_WINDOW / 2), cut)
+                    right = class_hist(chords, cut, cut + LOOP_WINDOW / 2)
+                    overlap = float(np.minimum(left, right).sum())
+                    if overlap < best_overlap - 1e-9:
+                        best_time, best_overlap = cut, overlap
+                if best_time is None:
+                    t += step
+                    continue
+                boundaries.append(best_time)
+                section_start = best_time
+                section_sum = class_hist(chords, best_time, best_time + LOOP_WINDOW)
+                section_windows = 1
+                t = best_time + step
+                continue
+            section_sum = section_sum + h
+            section_windows += 1
+            t += step
+
+    edges = [0.0] + boundaries + [float("inf")]
+    sections = []
+    for a, z in zip(edges[:-1], edges[1:]):
+        members = [k for k, c in enumerate(chords) if a - 1e-6 <= c["start"] < z - 1e-6]
+        if not members:
+            continue
+        sections.append({"first": members[0], "last": members[-1]})
+
+    result = []
     for sec in sections:
-        sec["start"] = chords[sec["first"]]["start"]
-        sec["end"] = chords[sec["last"]]["end"]
-    return sections
+        pattern, cycles = section_pattern(chords[sec["first"]:sec["last"] + 1])
+        item = {
+            "kind": "loop" if pattern else "free",
+            "first": sec["first"],
+            "last": sec["last"],
+            "start": chords[sec["first"]]["start"],
+            "end": chords[sec["last"]]["end"],
+        }
+        if pattern:
+            item["pattern"] = [{"root": int(r), "quality": q} for r, q in pattern]
+            item["cycles"] = cycles
+        result.append(item)
+    return result
 
 
 def melody_salience(x):
