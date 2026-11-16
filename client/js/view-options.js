@@ -2,15 +2,20 @@
 // both or nothing, and the other views can be shown or hidden. Choices are remembered in this
 // browser only.
 const ViewOptions = (() => {
-  const DEFAULTS = { piano: 'both', chords: 'show', melody: 'show', staff: 'show', lyrics: 'show' };
+  const DEFAULTS = { piano: 'both', chords: 'compact', melody: 'show', staff: 'show', lyrics: 'show' };
   const LABELS = {
     piano: 'Piano shows',
-    chords: 'Chord strip',
+    chords: 'Chords show',
     melody: 'Melody lane',
     staff: 'Staff',
     lyrics: 'Lyrics',
   };
   const CHOICES = {
+    chords: [
+      ['compact', 'Progression summary'],
+      ['detailed', 'Every chord (timeline)'],
+      ['hide', 'Hide'],
+    ],
     piano: [
       ['both', 'Chords and melody'],
       ['chords', 'Chords only'],
@@ -34,7 +39,7 @@ const ViewOptions = (() => {
   const elements = {};
 
   function get(name) {
-    const allowed = (name === 'piano' ? CHOICES.piano : CHOICES.show).map((c) => c[0]);
+    const allowed = CHOICES[name === 'piano' || name === 'chords' ? name : 'show'].map((c) => c[0]);
     try {
       const value = localStorage.getItem(`songlens.view.${name}`);
       if (allowed.includes(value)) return value;
@@ -71,7 +76,7 @@ const ViewOptions = (() => {
       row.append(document.createTextNode(`${LABELS[name]}: `));
       const select = document.createElement('select');
       select.dataset.view = name;
-      (name === 'piano' ? CHOICES.piano : CHOICES.show).forEach(([value, text]) => {
+      CHOICES[name === 'piano' || name === 'chords' ? name : 'show'].forEach(([value, text]) => {
         const option = document.createElement('option');
         option.value = value;
         option.textContent = text;

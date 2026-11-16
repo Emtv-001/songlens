@@ -14,6 +14,19 @@ function canEdit(song, user) {
   return Boolean(song.ownerId && song.ownerId.equals(user._id));
 }
 
+// True when the two chord lists are the same chords at the same times (ids are ignored).
+function sameChords(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  return a.every(
+    (c, i) =>
+      c.start === b[i].start &&
+      c.end === b[i].end &&
+      c.root === b[i].root &&
+      c.quality === b[i].quality &&
+      (c.bass ?? null) === (b[i].bass ?? null)
+  );
+}
+
 function emptyTimeline(songId) {
   return {
     songId,
@@ -25,6 +38,8 @@ function emptyTimeline(songId) {
     lyrics: [],
     chords: [],
     melody: [],
+    keySections: [],
+    sections: [],
     revision: 0,
   };
 }
@@ -71,10 +86,17 @@ async function saveTimeline(req, res, next) {
       return res.status(400).json({ message: error });
     }
 
+    // Key changes and chord sections come from an analysis. If the chords or the main key are
+    // edited by hand, they no longer describe the song, so they are cleared.
+    const before = await SongTimeline.findOne({ songId }).select('chords keyPc mode').lean();
+    const set = { ...value, source: 'manual' };
+    if (!before || !sameChords(before.chords, value.chords)) set.sections = [];
+    if (!before || before.keyPc !== value.keyPc || before.mode !== value.mode) set.keySections = [];
+
     const saved = await SongTimeline.findOneAndUpdate(
       { songId },
       {
-        $set: { ...value, source: 'manual' },
+        $set: set,
         $setOnInsert: { songId },
         $inc: { revision: 1 },
       },

@@ -34,6 +34,37 @@ const noteSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Where the key changes during the song (empty when the key stays the same).
+const keySectionSchema = new mongoose.Schema(
+  {
+    start: { type: Number, required: true },
+    end: { type: Number, required: true },
+    keyPc: { type: Number, required: true, min: 0, max: 11 },
+    mode: { type: String, required: true, enum: ['major', 'minor'] },
+  },
+  { _id: false }
+);
+
+// A stretch of the song with one repeating chord progression, found by the analysis.
+const progressionChordSchema = new mongoose.Schema(
+  {
+    root: { type: Number, required: true, min: 0, max: 11 },
+    quality: { type: String, required: true },
+  },
+  { _id: false }
+);
+
+const progressionSchema = new mongoose.Schema(
+  {
+    kind: { type: String, required: true, enum: ['loop', 'free'] },
+    start: { type: Number, required: true },
+    end: { type: Number, required: true },
+    cycles: { type: Number, default: null },
+    pattern: { type: [progressionChordSchema], default: [] },
+  },
+  { _id: false }
+);
+
 const songTimelineSchema = new mongoose.Schema(
   {
     songId: {
@@ -51,6 +82,8 @@ const songTimelineSchema = new mongoose.Schema(
     lyrics: { type: [lyricSchema], default: [] },
     chords: { type: [chordSchema], default: [] },
     melody: { type: [noteSchema], default: [] },
+    keySections: { type: [keySectionSchema], default: [] },
+    sections: { type: [progressionSchema], default: [] },
     revision: { type: Number, default: 0 },
   },
   { timestamps: true }

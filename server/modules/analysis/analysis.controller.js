@@ -141,6 +141,58 @@ async function getRun(req, res, next) {
 // POST /songs/:songId/analysis/:runId/apply
 // Copies the chosen findings of a finished run into the song's timeline. The run itself is
 // never changed, so the original analysis stays available. Lyrics are never touched.
+const MAX_SECTIONS = 200;
+
+// Key changes from the analyzer, or null when they are unusable.
+function toKeySections(list) {
+  if (!Array.isArray(list) || list.length === 0 || list.length > MAX_SECTIONS) return null;
+  const out = [];
+  for (const k of list) {
+    const ok =
+      k &&
+      Number.isFinite(k.start) &&
+      Number.isFinite(k.end) &&
+      k.start >= 0 &&
+      k.end > k.start &&
+      Number.isInteger(k.keyPc) &&
+      k.keyPc >= 0 &&
+      k.keyPc <= 11 &&
+      (k.mode === 'major' || k.mode === 'minor');
+    if (!ok) return null;
+    out.push({ start: k.start, end: k.end, keyPc: k.keyPc, mode: k.mode });
+  }
+  return out;
+}
+
+// Chord sections (repeating progressions) from the analyzer, or null when unusable.
+function toSections(list) {
+  if (!Array.isArray(list) || list.length === 0 || list.length > MAX_SECTIONS) return null;
+  const out = [];
+  for (const s of list) {
+    const pattern = Array.isArray(s && s.pattern) ? s.pattern : [];
+    const ok =
+      s &&
+      (s.kind === 'loop' || s.kind === 'free') &&
+      Number.isFinite(s.start) &&
+      Number.isFinite(s.end) &&
+      s.start >= 0 &&
+      s.end > s.start &&
+      pattern.length <= 8 &&
+      pattern.every(
+        (p) => p && Number.isInteger(p.root) && p.root >= 0 && p.root <= 11 && QUALITIES.includes(p.quality)
+      );
+    if (!ok) return null;
+    out.push({
+      kind: s.kind,
+      start: s.start,
+      end: s.end,
+      cycles: Number.isFinite(s.cycles) ? s.cycles : null,
+      pattern: pattern.map((p) => ({ root: p.root, quality: p.quality })),
+    });
+  }
+  return out;
+}
+
 // Body (all optional): { key: boolean, tempo: boolean, bpm: number, chords: boolean, melody: boolean }
 // key and tempo default to true. Chords and melody default to false, because they replace
 // the chords or melody already saved for the song.
@@ -182,6 +234,16 @@ async function applyRun(req, res, next) {
       }
       changes.keyPc = result.keyPc;
       changes.mode = result.mode;
+      // A song that changes key keeps its key sections; the main key is the one heard longest.
+      const keySections = toKeySections(result.keySections);
+      if (keySections && keySections.length >= 2) {
+        const main = keySections.reduce((a, b) => (b.end - b.start > a.end - a.start ? b : a));
+        changes.keyPc = main.keyPc;
+        changes.mode = main.mode;
+        changes.keySections = keySections;
+      } else {
+        changes.keySections = [];
+      }
     }
 
     if (useTempo) {
@@ -205,6 +267,7 @@ async function applyRun(req, res, next) {
         return res.status(400).json({ message: 'This analysis did not find usable chords.' });
       }
       changes.chords = chords;
+      changes.sections = toSections(result.chordSections) || [];
     }
 
     if (useMelody) {

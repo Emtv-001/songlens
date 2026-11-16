@@ -16,6 +16,7 @@
   anchor.parentNode.insertBefore(section, anchor);
 
   let busy = false;
+  let reviewing = false; // an applied result stays folded away until the owner opens it
   let message = '';
   let messageIsError = false;
   let view = { kind: 'idle' }; // idle | running | failed | done
@@ -41,6 +42,33 @@
     return `${TimelineUtils.pcName(keyPc, flats)} ${mode}`;
   }
 
+  function clock(seconds) {
+    const total = Math.max(0, Math.round(seconds));
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  }
+
+  // "C minor 0:00-1:28, then D minor 1:28-2:32" when the key changes, otherwise null.
+  function keyChangeText(result) {
+    const list = Array.isArray(result.keySections) ? result.keySections : [];
+    if (list.length < 2) return null;
+    return list
+      .map((k) => `${keyName(k.keyPc, k.mode)} ${clock(k.start)}-${clock(k.end)}`)
+      .join(', then ');
+  }
+
+  // One line per section: the repeating progression, or "no repeating pattern".
+  function sectionLines(result, flats) {
+    const list = Array.isArray(result.chordSections) ? result.chordSections : [];
+    return list.map((s) => {
+      const when = `${clock(s.start)}-${clock(s.end)}`;
+      if (s.kind === 'loop' && Array.isArray(s.pattern) && s.pattern.length) {
+        const names = s.pattern.map((c) => TimelineUtils.chordSymbol(c, flats)).join(' · ');
+        return `${when}: ${names} (repeats about ${Math.round(s.cycles || 0)} times)`;
+      }
+      return `${when}: no repeating pattern`;
+    });
+  }
+
   async function api(url, options) {
     const response = await fetch(url, options);
     const data = await response.json().catch(() => ({}));
@@ -48,13 +76,14 @@
   }
 
   async function loadExisting() {
-    existing = { chords: null, melody: null };
+    existing = { chords: null, melody: null, analysisId: null };
     try {
       const { ok, data } = await api(`/api/v1/songs/${encodeURIComponent(songId)}/timeline`);
       const timeline = ok && data.timeline;
       if (timeline) {
         if (Array.isArray(timeline.chords)) existing.chords = timeline.chords.length;
         if (Array.isArray(timeline.melody)) existing.melody = timeline.melody.length;
+        if (timeline.analysisId) existing.analysisId = String(timeline.analysisId);
       }
     } catch (err) {
       // the counts stay unknown
@@ -84,7 +113,25 @@
     } else if (view.kind === 'failed') {
       section.appendChild(el('p', 'analysis-status error', `The last analysis failed: ${view.error}`));
     } else if (view.kind === 'done') {
-      section.appendChild(renderResult(view.run));
+      const applied = existing.analysisId && String(view.run._id) === existing.analysisId;
+      if (applied && !reviewing) {
+        section.appendChild(
+          el(
+            'p',
+            'analysis-status',
+            '✓ This analysis has been applied to your song. Check it by ear and fix anything in the editor below.'
+          )
+        );
+        const open = el('button', 'btn btn-small btn-outline', 'Review the result or apply more');
+        open.type = 'button';
+        open.addEventListener('click', () => {
+          reviewing = true;
+          render();
+        });
+        section.appendChild(open);
+      } else {
+        section.appendChild(renderResult(view.run));
+      }
     }
 
     if (view.kind !== 'running') {
@@ -142,6 +189,13 @@
         .filter((a) => Number.isInteger(a.keyPc) && a.mode)
         .map((a) => keyName(a.keyPc, a.mode));
       if (alternatives.length) row.appendChild(el('p', 'analysis-sub', `Close alternatives: ${alternatives.join(', ')}`));
+      const changes = keyChangeText(result);
+      if (changes) {
+        row.appendChild(el('p', 'analysis-sub', `The key changes during the song: ${changes}.`));
+        row.appendChild(
+          el('p', 'analysis-sub', 'Applying saves these key changes. The main key is the one heard longest.')
+        );
+      }
       if (typeof result.keyConfidence === 'number' && result.keyConfidence < 0.34) {
         row.appendChild(el('p', 'analysis-sub warn', 'Low confidence: listen and check before applying.'));
       }
@@ -196,6 +250,9 @@
       row.appendChild(
         el('p', 'analysis-sub', `Starts with: ${preview.join(' · ')}${chordList.length > 8 ? ' …' : ''}`)
       );
+      sectionLines(result, flats).forEach((line, index) => {
+        row.appendChild(el('p', 'analysis-sub', index === 0 ? `Progression: ${line}` : line));
+      });
       if (existing.chords > 0) {
         row.appendChild(
           el('p', 'analysis-sub warn', `Applying replaces the ${existing.chords} chord${existing.chords === 1 ? '' : 's'} saved for this song.`)
@@ -328,6 +385,7 @@
   }
 
   async function start() {
+    reviewing = false;
     busy = true;
     say('');
     render();

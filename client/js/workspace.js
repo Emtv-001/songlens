@@ -224,6 +224,15 @@ function renderSongMeta() {
   );
 }
 
+// The chord sections found by the analysis, with their patterns transposed like the chords.
+function displaySections() {
+  const list = Array.isArray(workspace.timeline.sections) ? workspace.timeline.sections : [];
+  return list.map((s) => ({
+    ...s,
+    pattern: (s.pattern || []).map((c) => Theory.transposeChord(c, workspace.transpose)),
+  }));
+}
+
 // Builds every view and subscribes it to the shared clock.
 // Safe to call again after the timeline changes (for example after saving an edit).
 function buildViews() {
@@ -243,7 +252,13 @@ function buildViews() {
   if (chords.length > 0) {
     const { keyPc, mode } = workspace.display;
     const romanFor = (chord) => Theory.romanNumeral(chord, keyPc, mode);
-    add(createChordView(chordStripEl, chords, seekTo, romanFor, flats).render);
+    const sections = displaySections();
+    chordStripEl.classList.remove('chord-summary');
+    if (ViewOptions.get('chords') === 'compact' && sections.length > 0) {
+      add(createChordSummaryView(chordStripEl, sections, chords, seekTo, romanFor, flats).render);
+    } else {
+      add(createChordView(chordStripEl, chords, seekTo, romanFor, flats).render);
+    }
   } else {
     showEmpty(chordStripEl, 'No chords yet.');
   }
