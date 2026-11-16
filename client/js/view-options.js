@@ -5,15 +5,15 @@ const ViewOptions = (() => {
   const DEFAULTS = { piano: 'both', chords: 'compact', melody: 'show', staff: 'show', lyrics: 'show' };
   const LABELS = {
     piano: 'Piano shows',
-    chords: 'Chords show',
-    melody: 'Melody lane',
-    staff: 'Staff',
+    chords: 'Show chords as',
+    melody: 'Melody bar',
+    staff: 'Sheet music',
     lyrics: 'Lyrics',
   };
   const CHOICES = {
     chords: [
-      ['compact', 'Progression summary'],
-      ['detailed', 'Every chord (timeline)'],
+      ['compact', 'Short summary'],
+      ['detailed', 'Every chord'],
       ['hide', 'Hide'],
     ],
     piano: [

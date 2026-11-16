@@ -41,7 +41,7 @@
         <audio id="audio" controls preload="metadata"></audio>
 
         <div class="speed-row">
-          <label for="speed">Speed</label>
+          <label for="speed">Playback speed</label>
           <select id="speed">
             <option value="0.5">0.5×</option>
             <option value="0.75">0.75×</option>
@@ -61,11 +61,11 @@
             <p class="value chord" id="now-chord">—</p>
           </div>
           <div class="now-box">
-            <p class="label">Roman numeral</p>
+            <p class="label">Chord number</p>
             <p class="value roman" id="now-roman">—</p>
           </div>
           <div class="now-box">
-            <p class="label">Solfège (moveable do)</p>
+            <p class="label">Do-re-mi</p>
             <p class="value solfa" id="now-solfa">—</p>
           </div>
           <div class="now-box">
@@ -73,27 +73,27 @@
             <p class="value chord" id="now-note">—</p>
           </div>
           <div class="now-box">
-            <p class="label">Melody solfège</p>
+            <p class="label">Melody do-re-mi</p>
             <p class="value solfa" id="now-note-solfa">—</p>
           </div>
         </div>
 
         <div class="transpose-row">
-          <span class="transpose-title">Transpose</span>
-          <button type="button" id="transpose-down" aria-label="Transpose down one semitone">−</button>
-          <button type="button" id="transpose-up" aria-label="Transpose up one semitone">+</button>
-          <button type="button" id="transpose-reset" aria-label="Back to the original key">Original</button>
+          <span class="transpose-title">Change key</span>
+          <button type="button" id="transpose-down" aria-label="Lower the key by one half step">−</button>
+          <button type="button" id="transpose-up" aria-label="Raise the key by one half step">+</button>
+          <button type="button" id="transpose-reset" aria-label="Back to the original key">Reset</button>
           <span class="transpose-label" id="transpose-label" role="status">Original key</span>
         </div>
         <p class="transpose-note">
-          Display only. The recording keeps its original pitch, and your saved chords are not changed.
+          This only changes what you see here. The recording sounds the same, and your saved chords are not changed.
         </p>
 
         <div class="solfa-row">
-          <label for="minor-base">Solfège in minor keys</label>
+          <label for="minor-base">In minor keys, the first note is called</label>
           <select id="minor-base">
-            <option value="la">la-based (la is the tonic)</option>
-            <option value="do">do-based (do is the tonic)</option>
+            <option value="la">la</option>
+            <option value="do">do</option>
           </select>
         </div>
 
@@ -103,12 +103,12 @@
         <h2 class="section-title">Melody</h2>
         <div class="melody-lane" id="melody-lane" tabindex="0" aria-label="Melody timeline"></div>
 
-        <h2 class="section-title">Staff</h2>
+        <h2 class="section-title">Sheet music</h2>
         <div class="solfa-row">
-          <label for="staff-labels">Under the notes</label>
+          <label for="staff-labels">Write under the notes</label>
           <select id="staff-labels">
-            <option value="solfege">Solfège</option>
-            <option value="name">Note names</option>
+            <option value="solfege">Do-re-mi</option>
+            <option value="name">Letters (C, D, E)</option>
             <option value="none">Nothing</option>
           </select>
         </div>

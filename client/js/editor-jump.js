@@ -90,7 +90,7 @@
 
     const target = document.createElement('select');
     target.setAttribute('aria-label', 'Jump to part of the editor');
-    [['top', 'Top of editor'], ...GROUPS.map((g) => [g, g])].forEach(([value, label]) => {
+    [['top', 'Start of editor'], ...GROUPS.map((g) => [g, g])].forEach(([value, label]) => {
       const option = document.createElement('option');
       option.value = value;
       option.textContent = label;

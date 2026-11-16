@@ -116,7 +116,7 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     min: '20',
     max: '300',
     step: '1',
-    'aria-label': 'Tempo in beats per minute',
+    'aria-label': 'Speed in beats per minute',
   });
   bpmInput.addEventListener('input', () => {
     const n = parseFloat(bpmInput.value);
@@ -159,9 +159,9 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
       'div',
       { class: 'editor-settings' },
       field('Key', keySelectHolder),
-      field('Mode', modeSelectHolder),
-      field('Tempo (BPM)', bpmInput),
-      field('Time signature', timeSigHolder)
+      field('Major or minor', modeSelectHolder),
+      field('Speed (beats per minute)', bpmInput),
+      field('Time signature (beats per bar)', timeSigHolder)
     )
   );
 
@@ -178,7 +178,7 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     );
   }
 
-  const chordTable = table(['#', 'Start (s)', 'End (s)', 'Root', 'Quality', 'Bass', 'Symbol', ''], chordBody);
+  const chordTable = table(['#', 'Start (s)', 'End (s)', 'Note', 'Type', 'Lowest note', 'Name', ''], chordBody);
   const sectionHolder = h('div', { class: 'editor-sections' });
 
   const chordsGroup = h(
@@ -199,7 +199,7 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
       { class: 'editor-help' },
       'One row per sung note. Middle C is C4. Notes are stored as pitch numbers, so the names and solfège are worked out for you.'
     ),
-    table(['#', 'Start (s)', 'End (s)', 'Pitch', ''], melodyBody),
+    table(['#', 'Start (s)', 'End (s)', 'Note', ''], melodyBody),
     h('div', { class: 'editor-actions' }, addNoteBtn)
   );
 
@@ -415,7 +415,7 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     });
     const times = Math.max(1, Math.round(section.cycles || 1));
     const kind =
-      section.kind === 'loop' ? `a repeating progression, about ${times} time${times === 1 ? '' : 's'}` : 'changing chords';
+      section.kind === 'loop' ? `a repeating chord pattern, about ${times} time${times === 1 ? '' : 's'}` : 'changing chords';
 
     const card = h(
       'div',
@@ -484,7 +484,7 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
         { class: 'editor-section-rows' },
         h('summary', { text: `Show the ${members.length} chord rows` }),
         table(
-          ['#', 'Start (s)', 'End (s)', 'Root', 'Quality', 'Bass', 'Symbol', ''],
+          ['#', 'Start (s)', 'End (s)', 'Note', 'Type', 'Lowest note', 'Name', ''],
           h('tbody', {}, members.map((c) => chordRow(c, draft.chords.indexOf(c))))
         )
       );

@@ -32,9 +32,9 @@
 
   function confidenceLabel(value) {
     if (typeof value !== 'number') return 'unknown';
-    if (value < 0.34) return 'low';
-    if (value < 0.67) return 'medium';
-    return 'high';
+    if (value < 0.34) return 'not sure';
+    if (value < 0.67) return 'fairly sure';
+    return 'very sure';
   }
 
   function keyName(keyPc, mode) {
@@ -97,12 +97,12 @@
 
   function render() {
     section.replaceChildren();
-    section.appendChild(el('h2', 'section-title', 'Automatic analysis'));
+    section.appendChild(el('h2', 'section-title', 'Automatic song check'));
     section.appendChild(
       el(
         'p',
         'analysis-note',
-        'Estimates the tempo, key, chords and melody from the audio. These are estimates, so always check them by ear. Nothing changes in your song until you press Apply.'
+        'Listens to the song and guesses its speed, key, chords and melody. These are guesses, so always check them by ear. Nothing changes in your song until you press Apply.'
       )
     );
 
@@ -161,7 +161,7 @@
     const hasMelody = noteList.length > 0;
 
     if (!hasTempo && !hasKey && !hasChords && !hasMelody) {
-      box.appendChild(el('p', 'analysis-status', 'The analysis did not find a tempo, a key, chords or a melody.'));
+      box.appendChild(el('p', 'analysis-status', 'The analysis did not find a speed, a key, chords or a melody.'));
       return box;
     }
 
@@ -181,14 +181,14 @@
       label.appendChild(keyBox);
       label.appendChild(
         document.createTextNode(
-          ` Key: ${keyName(result.keyPc, result.mode)} (${confidenceLabel(result.keyConfidence)} confidence)`
+          ` Key: ${keyName(result.keyPc, result.mode)} (${confidenceLabel(result.keyConfidence)})`
         )
       );
       row.appendChild(label);
       const alternatives = (result.keyAlternatives || [])
         .filter((a) => Number.isInteger(a.keyPc) && a.mode)
         .map((a) => keyName(a.keyPc, a.mode));
-      if (alternatives.length) row.appendChild(el('p', 'analysis-sub', `Close alternatives: ${alternatives.join(', ')}`));
+      if (alternatives.length) row.appendChild(el('p', 'analysis-sub', `Other possible keys: ${alternatives.join(', ')}`));
       const changes = keyChangeText(result);
       if (changes) {
         row.appendChild(el('p', 'analysis-sub', `The key changes during the song: ${changes}.`));
@@ -197,7 +197,7 @@
         );
       }
       if (typeof result.keyConfidence === 'number' && result.keyConfidence < 0.34) {
-        row.appendChild(el('p', 'analysis-sub warn', 'Low confidence: listen and check before applying.'));
+        row.appendChild(el('p', 'analysis-sub warn', 'Not sure about this one: listen and check before applying.'));
       }
       lines.appendChild(row);
     }
@@ -210,7 +210,7 @@
       const label = el('label');
       label.appendChild(tempoBox);
       label.appendChild(
-        document.createTextNode(` Tempo (${confidenceLabel(result.bpmConfidence)} confidence)`)
+        document.createTextNode(` Speed (${confidenceLabel(result.bpmConfidence)})`)
       );
       row.appendChild(label);
 
@@ -224,13 +224,13 @@
         const optionLabel = el('label', 'analysis-option');
         optionLabel.appendChild(radio);
         optionLabel.appendChild(
-          document.createTextNode(` ${bpm} BPM${index === 0 ? ' (detected)' : ' (half or double?)'}`)
+          document.createTextNode(` ${bpm} BPM${index === 0 ? ' (found)' : ' (half or double speed?)'}`)
         );
         row.appendChild(optionLabel);
         tempoRadios.push(radio);
       });
       if (typeof result.bpmConfidence === 'number' && result.bpmConfidence < 0.34) {
-        row.appendChild(el('p', 'analysis-sub warn', 'Low confidence: tap along to the song to check.'));
+        row.appendChild(el('p', 'analysis-sub warn', 'Not sure about this one: tap along to the song to check.'));
       }
       lines.appendChild(row);
     }
@@ -251,7 +251,7 @@
         el('p', 'analysis-sub', `Starts with: ${preview.join(' · ')}${chordList.length > 8 ? ' …' : ''}`)
       );
       sectionLines(result, flats).forEach((line, index) => {
-        row.appendChild(el('p', 'analysis-sub', index === 0 ? `Progression: ${line}` : line));
+        row.appendChild(el('p', 'analysis-sub', index === 0 ? `Chord pattern: ${line}` : line));
       });
       if (existing.chords > 0) {
         row.appendChild(

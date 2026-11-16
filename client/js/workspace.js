@@ -58,7 +58,7 @@ function solfegeFlats() {
 function updateTransposeUi() {
   const n = workspace.transpose;
   const original = workspace.timeline;
-  let text = n === 0 ? 'Original key' : `${n > 0 ? '+' : ''}${n} semitone${Math.abs(n) === 1 ? '' : 's'}`;
+  let text = n === 0 ? 'Original key' : `${n > 0 ? '+' : ''}${n} half step${Math.abs(n) === 1 ? '' : 's'}`;
 
   if (original.keyPc !== null && original.keyPc !== undefined) {
     const modeText = original.mode ? ` ${original.mode}` : '';
@@ -205,8 +205,8 @@ function renderSongMeta() {
   const tempoText = t.bpm ? `${t.bpm} BPM` : 'not set';
   const items = [
     ['Key', keyText],
-    ['Tempo', tempoText],
-    ['Time', t.timeSignature || '4/4'],
+    ['Speed', tempoText],
+    ['Beats', t.timeSignature || '4/4'],
   ];
 
   metaEl.replaceChildren(
