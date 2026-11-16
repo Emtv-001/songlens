@@ -69,8 +69,12 @@
   }
 
   function show(row) {
-    const details = panel();
-    if (details && !details.open) details.open = true;
+    // open every folded part (the editor and the chord section) that holds the row
+    let folded = row.closest('details');
+    while (folded) {
+      if (!folded.open) folded.open = true;
+      folded = folded.parentElement ? folded.parentElement.closest('details') : null;
+    }
     row.scrollIntoView({ behavior, block: 'center' });
     row.classList.add('editor-row-flash');
     setTimeout(() => row.classList.remove('editor-row-flash'), 1600);

@@ -145,6 +145,35 @@ function validateTimeline(body) {
     out.melody.sort((a, b) => a.start - b.start);
   }
 
+  // Chord sections found by an analysis (only touched when the request includes them)
+  if (body.sections !== undefined) {
+    const list = body.sections;
+    if (!Array.isArray(list) || list.length > 200) return { error: 'sections must be a list of at most 200' };
+    out.sections = [];
+    for (let i = 0; i < list.length; i += 1) {
+      const s = list[i];
+      const pattern = Array.isArray(s && s.pattern) ? s.pattern : null;
+      const ok =
+        s &&
+        (s.kind === 'loop' || s.kind === 'free') &&
+        isNum(s.start) &&
+        isNum(s.end) &&
+        s.start >= 0 &&
+        s.end > s.start &&
+        pattern &&
+        pattern.length <= 8 &&
+        pattern.every((p) => p && isPitchClass(p.root) && QUALITIES.includes(p.quality));
+      if (!ok) return { error: `Section #${i + 1} is not valid` };
+      out.sections.push({
+        kind: s.kind,
+        start: s.start,
+        end: s.end,
+        cycles: isNum(s.cycles) ? s.cycles : null,
+        pattern: pattern.map((p) => ({ root: p.root, quality: p.quality })),
+      });
+    }
+  }
+
   return { value: out };
 }
 

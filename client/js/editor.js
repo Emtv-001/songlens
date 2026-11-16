@@ -48,6 +48,13 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
         end: n.end,
         midi: n.midi,
       })),
+      sections: (t.sections || []).map((s) => ({
+        kind: s.kind,
+        start: s.start,
+        end: s.end,
+        cycles: s.cycles ?? null,
+        pattern: (s.pattern || []).map((p) => ({ root: p.root, quality: p.quality })),
+      })),
     };
   }
 
@@ -171,11 +178,15 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     );
   }
 
+  const chordTable = table(['#', 'Start (s)', 'End (s)', 'Root', 'Quality', 'Bass', 'Symbol', ''], chordBody);
+  const sectionHolder = h('div', { class: 'editor-sections' });
+
   const chordsGroup = h(
     'fieldset',
     { class: 'editor-group' },
     h('legend', { text: 'Chords' }),
-    table(['#', 'Start (s)', 'End (s)', 'Root', 'Quality', 'Bass', 'Symbol', ''], chordBody),
+    chordTable,
+    sectionHolder,
     h('div', { class: 'editor-actions' }, addChordBtn)
   );
 
@@ -367,7 +378,143 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     );
   }
 
+  // ---- Chords grouped into the sections found by the analysis ----
+  const openSections = new Set();
+
+  function ensureSectionStyle() {
+    if (document.getElementById('editor-section-style')) return;
+    const style = document.createElement('style');
+    style.id = 'editor-section-style';
+    style.textContent = `
+      .editor-section { border: 1px solid var(--soft-grey, #a9b2c5); border-radius: 12px; padding: 0.7rem 0.9rem; margin: 0.6rem 0; }
+      .editor-section-title { margin: 0 0 0.2rem; font-weight: 700; }
+      .editor-section-fix { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0.5rem 0; font-size: 0.9rem; }
+      .editor-section-rows > summary { cursor: pointer; margin-top: 0.4rem; color: var(--teal, #46b9b0); }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function clockText(seconds) {
+    const total = Math.max(0, Math.round(seconds));
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  }
+
+  // The section a chord belongs to: the first one that has not ended before the chord starts.
+  function sectionIndexOf(chord) {
+    const list = draft.sections;
+    for (let i = 0; i < list.length; i += 1) {
+      if (chord.start < list[i].end - 1e-6 || i === list.length - 1) return i;
+    }
+    return list.length - 1;
+  }
+
+  function sectionCard(section, index, members) {
+    const distinct = [];
+    members.forEach((c) => {
+      if (!distinct.some((d) => d.root === c.root && d.quality === c.quality)) distinct.push(c);
+    });
+    const times = Math.max(1, Math.round(section.cycles || 1));
+    const kind =
+      section.kind === 'loop' ? `a repeating progression, about ${times} time${times === 1 ? '' : 's'}` : 'changing chords';
+
+    const card = h(
+      'div',
+      { class: 'editor-section' },
+      h('p', { class: 'editor-section-title', text: `${clockText(section.start)} to ${clockText(section.end)} · ${kind}` }),
+      h('p', {
+        class: 'editor-help',
+        text: members.length
+          ? `Chords used here: ${distinct.map((c) => TimelineUtils.chordSymbol(c)).join(' · ')}. ${members.length} chord rows.`
+          : 'No chords in this section.',
+      })
+    );
+
+    if (distinct.length) {
+      const toRoot = selectEl('Change to this root', NOTE_OPTIONS, String(distinct[0].root), () => {});
+      const toQuality = selectEl('Change to this quality', QUALITIES, distinct[0].quality, () => {});
+      const fromSelect = selectEl(
+        'Chord to change',
+        distinct.map((c, i) => [String(i), TimelineUtils.chordSymbol(c)]),
+        '0',
+        (value) => {
+          const picked = distinct[Number(value)];
+          if (!picked) return;
+          toRoot.value = String(picked.root);
+          toQuality.value = picked.quality;
+        }
+      );
+      const apply = h('button', { type: 'button', class: 'btn-tiny', text: 'Change in this section' });
+      apply.addEventListener('click', () => {
+        const picked = distinct[Number(fromSelect.value)];
+        if (!picked) return;
+        const from = { root: picked.root, quality: picked.quality }; // a copy: the chords change below
+        const root = parseInt(toRoot.value, 10);
+        const quality = toQuality.value;
+        if (root === from.root && quality === from.quality) return;
+        members.forEach((c) => {
+          if (c.root === from.root && c.quality === from.quality) {
+            c.root = root;
+            c.quality = quality;
+          }
+        });
+        (section.pattern || []).forEach((p) => {
+          if (p.root === from.root && p.quality === from.quality) {
+            p.root = root;
+            p.quality = quality;
+          }
+        });
+        renderChordRows();
+        markDirty();
+      });
+      card.appendChild(
+        h(
+          'div',
+          { class: 'editor-section-fix' },
+          h('span', { text: 'Fix a wrong chord everywhere in this section:' }),
+          fromSelect,
+          h('span', { text: 'becomes' }),
+          toRoot,
+          toQuality,
+          apply
+        )
+      );
+
+      const rows = h(
+        'details',
+        { class: 'editor-section-rows' },
+        h('summary', { text: `Show the ${members.length} chord rows` }),
+        table(
+          ['#', 'Start (s)', 'End (s)', 'Root', 'Quality', 'Bass', 'Symbol', ''],
+          h('tbody', {}, members.map((c) => chordRow(c, draft.chords.indexOf(c))))
+        )
+      );
+      rows.open = openSections.has(index);
+      rows.addEventListener('toggle', () => {
+        if (rows.open) openSections.add(index);
+        else openSections.delete(index);
+      });
+      card.appendChild(rows);
+    }
+    return card;
+  }
+
   function renderChordRows() {
+    const grouped = draft.sections.length > 0 && draft.chords.length > 0;
+    chordTable.hidden = grouped;
+    sectionHolder.hidden = !grouped;
+    if (grouped) {
+      ensureSectionStyle();
+      const buckets = draft.sections.map(() => []);
+      draft.chords.forEach((c) => buckets[sectionIndexOf(c)].push(c));
+      sectionHolder.replaceChildren(
+        h('p', {
+          class: 'editor-help',
+          text: 'The chords are grouped into the sections found by the analysis, so repeats are not listed one by one. Open a section to see and edit its rows.',
+        }),
+        ...draft.sections.map((s, i) => sectionCard(s, i, buckets[i]))
+      );
+      return;
+    }
     const rows = draft.chords.map(chordRow);
     chordBody.replaceChildren(
       ...(rows.length ? rows : [emptyRow(8, 'No chords yet. Use "Add chord at current time".')])
@@ -443,14 +590,16 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
   // ---- Actions ----
   addChordBtn.addEventListener('click', () => {
     const start = currentTime();
-    draft.chords.push({
+    const added = {
       start,
       end: defaultEnd(start),
       root: draft.keyPc ?? 0,
       quality: draft.mode === 'minor' ? 'min' : 'maj',
       bass: null,
-    });
+    };
+    draft.chords.push(added);
     draft.chords.sort((a, b) => a.start - b.start);
+    if (draft.sections.length) openSections.add(sectionIndexOf(added));
     renderChordRows();
     markDirty();
   });
@@ -505,6 +654,13 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
       })),
       lyrics: draft.lyrics.map((l) => ({ id: l.id, start: l.start, end: l.end, text: l.text })),
       melody: draft.melody.map((n) => ({ id: n.id, start: n.start, end: n.end, midi: n.midi })),
+      sections: draft.sections.map((s) => ({
+        kind: s.kind,
+        start: s.start,
+        end: s.end,
+        cycles: s.cycles,
+        pattern: s.pattern.map((p) => ({ root: p.root, quality: p.quality })),
+      })),
     };
   }
 

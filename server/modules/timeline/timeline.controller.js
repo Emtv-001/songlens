@@ -90,7 +90,6 @@ async function saveTimeline(req, res, next) {
     // edited by hand, they no longer describe the song, so they are cleared.
     const before = await SongTimeline.findOne({ songId }).select('chords keyPc mode').lean();
     const set = { ...value, source: 'manual' };
-    if (!before || !sameChords(before.chords, value.chords)) set.sections = [];
     if (!before || before.keyPc !== value.keyPc || before.mode !== value.mode) set.keySections = [];
 
     const saved = await SongTimeline.findOneAndUpdate(
