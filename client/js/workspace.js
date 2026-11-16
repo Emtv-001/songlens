@@ -55,6 +55,20 @@ function solfegeFlats() {
   return Theory.usesFlats(workspace.timeline.keyPc, workspace.timeline.mode);
 }
 
+// The key changes found in the song, shown in the key the listener has chosen.
+function displayKeySections() {
+  const list = Array.isArray(workspace.timeline.keySections) ? workspace.timeline.keySections : [];
+  return list.map((k) => ({ ...k, keyPc: (((k.keyPc + workspace.transpose) % 12) + 12) % 12 }));
+}
+
+// The key that is sounding at a moment: a key change inside the song, otherwise the song's key.
+function keyAt(time) {
+  const list = displayKeySections();
+  if (list.length < 2) return { keyPc: workspace.display.keyPc, mode: workspace.display.mode };
+  const found = list.find((k) => time < k.end) || list[list.length - 1];
+  return { keyPc: found.keyPc, mode: found.mode };
+}
+
 function updateTransposeUi() {
   const n = workspace.transpose;
   const original = workspace.timeline;
@@ -158,7 +172,7 @@ function createNowView() {
 
     const chordIndex = TimelineUtils.findActiveIndex(workspace.display.chords, state.time);
     if (chordIndex !== lastChord) {
-      const { keyPc, mode } = workspace.display;
+      const { keyPc, mode } = keyAt(state.time);
       const chord = chordIndex === -1 ? null : workspace.display.chords[chordIndex];
 
       chordEl.textContent = chord ? TimelineUtils.chordSymbol(chord, displayFlats()) : '—';
@@ -178,7 +192,7 @@ function createNowView() {
 
     const noteIndex = TimelineUtils.findActiveIndex(workspace.display.melody || [], state.time);
     if (noteIndex !== lastNote) {
-      const { keyPc, mode } = workspace.display;
+      const { keyPc, mode } = keyAt(state.time);
       if (noteIndex === -1) {
         noteEl.textContent = '—';
         noteSolfaEl.textContent = '—';
@@ -198,8 +212,13 @@ function createNowView() {
 // Shows the key, tempo and time signature under the song title.
 function renderSongMeta() {
   const t = workspace.display;
+  const keyChanges = displayKeySections();
   const keyText =
-    t.keyPc === null || t.keyPc === undefined
+    keyChanges.length >= 2
+      ? keyChanges
+          .map((k) => `${TimelineUtils.pcName(k.keyPc, Theory.usesFlats(k.keyPc, k.mode))} ${k.mode}`)
+          .join(' → ')
+      : t.keyPc === null || t.keyPc === undefined
       ? 'not set'
       : `${TimelineUtils.pcName(t.keyPc, displayFlats())}${t.mode ? ` ${t.mode}` : ''}`;
   const tempoText = t.bpm ? `${t.bpm} BPM` : 'not set';
@@ -250,8 +269,10 @@ function buildViews() {
   add(createNowView());
 
   if (chords.length > 0) {
-    const { keyPc, mode } = workspace.display;
-    const romanFor = (chord) => Theory.romanNumeral(chord, keyPc, mode);
+    const romanFor = (chord) => {
+      const { keyPc, mode } = keyAt(chord.start);
+      return Theory.romanNumeral(chord, keyPc, mode);
+    };
     const sections = displaySections();
     chordStripEl.classList.remove('chord-summary');
     if (ViewOptions.get('chords') === 'compact' && sections.length > 0) {
@@ -277,7 +298,7 @@ function buildViews() {
       chords,
       chordLabel: (chord) => ({
         symbol: TimelineUtils.chordSymbol(chord, flats),
-        sub: hasKey ? Theory.romanNumeral(chord, keyPc, mode) : null,
+        sub: hasKey ? Theory.romanNumeral(chord, keyAt(chord.start).keyPc, keyAt(chord.start).mode) : null,
       }),
       noteLabel:
         labelMode === 'none'
@@ -286,7 +307,7 @@ function buildViews() {
               labelMode === 'name'
                 ? TimelineUtils.pcName(note.midi % 12, flats)
                 : hasKey
-                  ? Theory.solfege(note.midi % 12, keyPc, mode, getMinorBase(), solfegeFlats())
+                  ? Theory.solfege(note.midi % 12, keyAt(note.start).keyPc, keyAt(note.start).mode, getMinorBase(), solfegeFlats())
                   : null,
     };
     add(createStaffView(staffEl, melody, seekTo, flats, staffExtras).render);
