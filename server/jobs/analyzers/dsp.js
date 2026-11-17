@@ -9,6 +9,8 @@ const storage = require('../../storage');
 
 const ROOT = path.join(__dirname, '../../..');
 const SCRIPT = path.join(ROOT, 'analysis', 'analyze.py');
+const SEPARATE_SCRIPT = path.join(ROOT, 'analysis', 'separate.py');
+const SEPARATE_TIMEOUT_MS = Number(process.env.SEPARATE_TIMEOUT_MS) || 20 * 60 * 1000;
 const TIMEOUT_MS = Number(process.env.ANALYSIS_TIMEOUT_MS) || 5 * 60 * 1000;
 const MAX_OUTPUT = 1024 * 1024;
 
@@ -21,19 +23,21 @@ const EXTENSIONS = {
   'audio/mp4': '.m4a',
 };
 
-function pythonPath() {
-  if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
-  const venv = path.join(ROOT, 'analysis', '.venv');
+function pythonPath(envName = 'PYTHON_BIN', venvName = '.venv') {
+  if (process.env[envName]) return process.env[envName];
+  const venv = path.join(ROOT, 'analysis', venvName);
   return process.platform === 'win32'
     ? path.join(venv, 'Scripts', 'python.exe')
     : path.join(venv, 'bin', 'python');
 }
 
-function runPython(file) {
+function runPython(file, voiceFile) {
   return new Promise((resolve, reject) => {
     let child;
     try {
-      child = spawn(pythonPath(), [SCRIPT, file], { windowsHide: true });
+      child = spawn(pythonPath(), voiceFile ? [SCRIPT, file, '--melody-from', voiceFile] : [SCRIPT, file], {
+        windowsHide: true,
+      });
     } catch (err) {
       return reject(err);
     }
@@ -87,6 +91,62 @@ function runPython(file) {
   });
 }
 
+function runSeparate(input, output) {
+  return new Promise((resolve, reject) => {
+    let child;
+    try {
+      child = spawn(pythonPath('SEPARATE_PYTHON_BIN', '.venv-sep'), [SEPARATE_SCRIPT, input, output], {
+        windowsHide: true,
+      });
+    } catch (err) {
+      return reject(err);
+    }
+
+    let stdout = '';
+    let stderr = '';
+    let finished = false;
+    const done = (fn, value) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      fn(value);
+    };
+
+    const timer = setTimeout(() => {
+      child.kill();
+      done(reject, new Error('Separating the voice took too long and was stopped.'));
+    }, SEPARATE_TIMEOUT_MS);
+
+    child.stdout.on('data', (chunk) => {
+      if (stdout.length < 4000) stdout += chunk;
+    });
+    child.stderr.on('data', (chunk) => {
+      if (stderr.length < 4000) stderr += chunk;
+    });
+    child.on('error', (err) => {
+      if (err.code === 'ENOENT') {
+        done(reject, new Error('Voice-only analysis is not set up on this server.'));
+      } else {
+        done(reject, err);
+      }
+    });
+    child.on('close', (code) => {
+      let parsed = null;
+      try {
+        parsed = JSON.parse(stdout.trim().split('\n').pop());
+      } catch (err) {
+        // handled below
+      }
+      if (code === 0 && parsed && parsed.ok) return done(resolve);
+      console.error('Voice separation failed:', (parsed && parsed.error) || stderr.trim().split('\n').slice(-3).join(' | '));
+      if (/Error opening|Format not recognised|System error/i.test((parsed && parsed.error) || '')) {
+        return done(reject, new Error(friendly(parsed.error)));
+      }
+      done(reject, new Error('Could not separate the voice from this song.'));
+    });
+  });
+}
+
 function friendly(message) {
   if (/Error opening|Format not recognised|System error/i.test(message)) {
     return 'This audio file could not be read. MP3, WAV, FLAC and OGG files are supported.';
@@ -94,7 +154,7 @@ function friendly(message) {
   return message;
 }
 
-async function analyze(song) {
+async function analyze(song, run) {
   const key = song.audio && song.audio.storageKey;
   const ext = EXTENSIONS[song.audio && song.audio.mimeType] || '.audio';
   const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'songlens-'));
@@ -102,7 +162,12 @@ async function analyze(song) {
 
   try {
     await pipeline(storage.createReadStream(key), fs.createWriteStream(file));
-    const { engine, ...result } = await runPython(file);
+    let voiceFile = null;
+    if (run && run.options && run.options.voiceOnly) {
+      voiceFile = path.join(dir, 'voice.wav');
+      await runSeparate(file, voiceFile);
+    }
+    const { engine, ...result } = await runPython(file, voiceFile);
     return { engine, result };
   } finally {
     await fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {});

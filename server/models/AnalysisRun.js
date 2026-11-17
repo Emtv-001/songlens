@@ -23,6 +23,10 @@ const analysisRunSchema = new mongoose.Schema(
       index: true,
     },
     attempts: { type: Number, default: 0 },
+    // What the user asked for. voiceOnly: follow the singing voice only when finding the melody.
+    options: {
+      voiceOnly: { type: Boolean, default: false },
+    },
     error: { type: String, default: null },
     engine: {
       name: { type: String, default: null },

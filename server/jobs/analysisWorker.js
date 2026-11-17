@@ -7,7 +7,7 @@ const analyzer =
     : require('./analyzers/dsp');
 
 const POLL_MS = Number(process.env.ANALYSIS_POLL_MS) || 3000;
-const STALE_MS = 10 * 60 * 1000; // a run "running" for longer than this is assumed lost
+const STALE_MS = 30 * 60 * 1000; // a run "running" for longer than this is assumed lost
 const MAX_ATTEMPTS = 3;
 
 let timer = null;

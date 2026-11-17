@@ -739,7 +739,7 @@ def estimate_melody(x):
     return result, round(float(np.mean(voiced)), 2)
 
 
-def analyze(path):
+def analyze(path, melody_path=None):
     x, duration = load_audio(path)
     steady = middle(x, MAX_SECONDS)
     bpm, bpm_conf, bpm_alternatives = estimate_tempo(steady)
@@ -748,7 +748,20 @@ def analyze(path):
     key_sections = estimate_key_sections(times, chroma, energy, (key_pc, mode))
     chords = estimate_chords(x, times, chroma, energy, key_sections, key_conf)
     chord_sections = find_chord_sections(chords)
-    melody, voiced_ratio = estimate_melody(x)
+    melody_source = "mix"
+    if melody_path:
+        # Follow the singing voice only: the melody is found in the separated voice file.
+        melody_source = "voice"
+        try:
+            voice, _ = load_audio(melody_path)
+        except ValueError:
+            voice = None  # no singing found (silent voice track)
+        if voice is None:
+            melody, voiced_ratio, melody_source = [], 0.0, "none"
+        else:
+            melody, voiced_ratio = estimate_melody(voice)
+    else:
+        melody, voiced_ratio = estimate_melody(x)
     return {
         "engine": ENGINE,
         "durationSec": round(duration, 1),
@@ -766,15 +779,21 @@ def analyze(path):
         "chordSections": chord_sections,
         "melodyVoicedRatio": voiced_ratio,
         "melody": melody,
+        "melodySource": melody_source,
     }
 
 
 def main():
-    if len(sys.argv) != 2:
-        print(json.dumps({"error": "Usage: python analyze.py <audio file>"}))
+    args = sys.argv[1:]
+    melody_path = None
+    if len(args) == 3 and args[1] == "--melody-from":
+        melody_path = args[2]
+        args = args[:1]
+    if len(args) != 1:
+        print(json.dumps({"error": "Usage: python analyze.py <audio file> [--melody-from <voice file>]"}))
         return 1
     try:
-        print(json.dumps(analyze(sys.argv[1])))
+        print(json.dumps(analyze(args[0], melody_path)))
         return 0
     except Exception as err:  # noqa: BLE001 - report every failure as JSON
         print(json.dumps({"error": str(err)}))

@@ -93,10 +93,12 @@ async function requestAnalysis(req, res, next) {
       });
     }
 
+    const voiceOnly = !!(req.body && req.body.voiceOnly === true);
     const run = await AnalysisRun.create({
       songId: song._id,
       requestedBy: req.user._id,
       status: 'queued',
+      options: { voiceOnly },
     });
     res.status(202).json({ run });
   } catch (err) {
