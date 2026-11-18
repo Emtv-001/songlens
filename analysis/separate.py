@@ -30,7 +30,7 @@ def run(src, dst):
     ref = t.mean(0)
     m, s = ref.mean(), ref.std() + 1e-8
     with torch.no_grad():
-        out = apply_model(model, ((t - m) / s)[None], device="cpu", split=True, overlap=0.25, progress=False)[0]
+        out = apply_model(model, ((t - m) / s)[None], device="cpu", split=True, overlap=0.1, progress=False)[0]
     voice = (out[model.sources.index("vocals")] * s + m).mean(0, keepdim=True)
     voice = F.resample(voice, model.samplerate, 22050).clamp(-1, 1)
     sf.write(dst, voice[0].numpy(), 22050)

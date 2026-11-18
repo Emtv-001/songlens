@@ -31,11 +31,11 @@ function pythonPath(envName = 'PYTHON_BIN', venvName = '.venv') {
     : path.join(venv, 'bin', 'python');
 }
 
-function runPython(file, voiceFile) {
+function runPython(args) {
   return new Promise((resolve, reject) => {
     let child;
     try {
-      child = spawn(pythonPath(), voiceFile ? [SCRIPT, file, '--melody-from', voiceFile] : [SCRIPT, file], {
+      child = spawn(pythonPath(), [SCRIPT, ...args], {
         windowsHide: true,
       });
     } catch (err) {
@@ -162,12 +162,16 @@ async function analyze(song, run) {
 
   try {
     await pipeline(storage.createReadStream(key), fs.createWriteStream(file));
-    let voiceFile = null;
     if (run && run.options && run.options.voiceOnly) {
-      voiceFile = path.join(dir, 'voice.wav');
-      await runSeparate(file, voiceFile);
+      // The voice is separated while the speed, key and chords are analysed, then the melody
+      // is found in the separated voice.
+      const voiceFile = path.join(dir, 'voice.wav');
+      const [base] = await Promise.all([runPython([file, '--no-melody']), runSeparate(file, voiceFile)]);
+      const melody = await runPython(['--melody-only', voiceFile]);
+      const { engine, ...result } = { ...base, ...melody };
+      return { engine, result };
     }
-    const { engine, ...result } = await runPython(file, voiceFile);
+    const { engine, ...result } = await runPython([file]);
     return { engine, result };
   } finally {
     await fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {});

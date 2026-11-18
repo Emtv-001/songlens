@@ -14,6 +14,21 @@ function createPianoView(container, notesLabel, chords, melody, flats) {
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const BLACK_PITCH_CLASSES = new Set([1, 3, 6, 8, 10]);
 
+  // Low voices would sit at the far left (or below the keyboard), so melody notes are shown in
+  // the octave that puts the middle of the melody near the middle of the keyboard.
+  let melodyShift = 0;
+  if (melodyNotes.length) {
+    const sorted = melodyNotes.map((n) => n.midi).sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    melodyShift = 12 * Math.round((((FIRST + LAST) / 2) - median) / 12);
+  }
+  function melodyKeyFor(midi) {
+    let shown = midi + melodyShift;
+    while (shown < FIRST) shown += 12;
+    while (shown > LAST) shown -= 12;
+    return shown;
+  }
+
   const choice = typeof ViewOptions !== 'undefined' ? ViewOptions.get('piano') : 'both';
   const showChords = choice === 'both' || choice === 'chords';
   const showMelody = choice === 'both' || choice === 'melody';
@@ -156,8 +171,8 @@ function createPianoView(container, notesLabel, chords, melody, flats) {
       activeNoteIndex = noteIndex;
       clearMelody();
       if (noteIndex !== -1) {
-        // A note outside C3 to B5 has no key on this keyboard; the label still names it.
-        const key = keys.get(melodyNotes[noteIndex].midi);
+        // The label names the real note; the key lit is in the octave that fits the keyboard.
+        const key = keys.get(melodyKeyFor(melodyNotes[noteIndex].midi));
         if (key) key.classList.add('melody');
       }
     }
