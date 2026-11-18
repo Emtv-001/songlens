@@ -10,7 +10,9 @@ These are estimates from the audio signal, not facts: every value comes with a c
 number, and the app must let the user correct them.
 """
 import json
+import os
 import sys
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 import soundfile as sf
@@ -596,39 +598,58 @@ def find_chord_sections(chords):
     return result
 
 
-def melody_salience(x):
-    """For every ~23 ms: how strongly each candidate pitch is supported by its harmonics."""
+def _salience_chunk(job):
+    """Pitch salience for one chunk of audio (a separate function so chunks can run in parallel)."""
+    part, begin, has_next = job
     nper, hop = 4096, 512
-    chunk = CHUNK_SECONDS * TARGET_SR
     midis = np.arange(MELODY_LOW_MIDI, MELODY_HIGH_MIDI, 1.0 / MELODY_STEPS)
     f0s = 440.0 * 2.0 ** ((midis - 69.0) / 12.0)
     bin_width = TARGET_SR / nper
-    all_times, all_sal = [], []
+    freqs, times, spec = signal.stft(part, fs=TARGET_SR, nperseg=nper, noverlap=nper - hop)
+    # only the frequencies the harmonics can reach are needed (plus a margin for the filters)
+    needed = int(np.ceil(MELODY_HARMONICS * f0s[-1] / bin_width)) + 2 + 14
+    mag = np.abs(spec[: min(needed, spec.shape[0])])
+    harmonic = ndimage.median_filter(mag, size=(1, 11))
+    percussive = ndimage.median_filter(mag, size=(25, 1))
+    mag = np.sqrt(mag * harmonic**2 / (harmonic**2 + percussive**2 + 1e-12))
+
+    sal = np.zeros((len(f0s), mag.shape[1]))
+    for h in range(1, MELODY_HARMONICS + 1):
+        pos = h * f0s / bin_width
+        lo = np.minimum(np.floor(pos).astype(int), mag.shape[0] - 2)
+        frac = (pos - lo)[:, None]
+        sal += (0.8 ** (h - 1)) * (mag[lo] * (1 - frac) + mag[lo + 1] * frac)
+
+    t = times + begin / TARGET_SR
+    if has_next:  # the edge frame is repeated by the next chunk
+        t, sal = t[:-1], sal[:, :-1]
+    return t, sal.T
+
+
+def melody_salience(x):
+    """For every ~23 ms: how strongly each candidate pitch is supported by its harmonics."""
+    midis = np.arange(MELODY_LOW_MIDI, MELODY_HIGH_MIDI, 1.0 / MELODY_STEPS)
+    chunk = CHUNK_SECONDS * TARGET_SR
+    jobs = []
     for begin in range(0, len(x), chunk):
         part = x[begin:begin + chunk]
-        if len(part) < nper // 2:
+        if len(part) < 4096 // 2:
             break
-        freqs, times, spec = signal.stft(part, fs=TARGET_SR, nperseg=nper, noverlap=nper - hop)
-        mag = np.abs(spec)
-        harmonic = ndimage.median_filter(mag, size=(1, 11))
-        percussive = ndimage.median_filter(mag, size=(25, 1))
-        mag = np.sqrt(mag * harmonic**2 / (harmonic**2 + percussive**2 + 1e-12))
-
-        sal = np.zeros((len(f0s), mag.shape[1]))
-        for h in range(1, MELODY_HARMONICS + 1):
-            pos = h * f0s / bin_width
-            lo = np.minimum(np.floor(pos).astype(int), mag.shape[0] - 2)
-            frac = (pos - lo)[:, None]
-            sal += (0.8 ** (h - 1)) * (mag[lo] * (1 - frac) + mag[lo + 1] * frac)
-
-        t = times + begin / TARGET_SR
-        if begin + chunk < len(x):  # the edge frame is repeated by the next chunk
-            t, sal = t[:-1], sal[:, :-1]
-        all_times.append(t)
-        all_sal.append(sal.T)
-    if not all_times:
+        jobs.append((part, begin, begin + chunk < len(x)))
+    if not jobs:
         raise ValueError("The audio is too short to find a melody.")
-    return np.concatenate(all_times), np.vstack(all_sal), midis
+
+    results = None
+    workers = min(len(jobs), os.cpu_count() or 1)
+    if workers > 1:
+        try:  # chunks are independent, so they can use several processor cores at once
+            with ProcessPoolExecutor(max_workers=workers) as pool:
+                results = list(pool.map(_salience_chunk, jobs))
+        except Exception:  # noqa: BLE001 - fall back to one core
+            results = None
+    if results is None:
+        results = [_salience_chunk(job) for job in jobs]
+    return np.concatenate([r[0] for r in results]), np.vstack([r[1] for r in results]), midis
 
 
 def estimate_melody(x):
