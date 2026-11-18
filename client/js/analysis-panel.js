@@ -8,7 +8,7 @@
 
   const base = `/api/v1/songs/${encodeURIComponent(songId)}/analysis`;
   const POLL_MS = 3000;
-  const MAX_POLLS = 100; // about five minutes
+  const MAX_POLLS = 400; // about twenty minutes (voice-only runs are slower)
 
   const section = document.createElement('section');
   section.className = 'analysis-panel';
@@ -16,6 +16,8 @@
   anchor.parentNode.insertBefore(section, anchor);
 
   let busy = false;
+  let voiceOnly = false; // the tickbox: follow the singer's voice only
+  let runVoice = false; // the run being waited for is a voice-only run
   let reviewing = false; // an applied result stays folded away until the owner opens it
   let message = '';
   let messageIsError = false;
@@ -108,7 +110,15 @@
 
     if (view.kind === 'running') {
       section.appendChild(
-        el('p', 'analysis-status', view.status === 'queued' ? 'Waiting to start…' : 'Analysing the audio…')
+        el(
+          'p',
+          'analysis-status',
+          view.status === 'queued'
+            ? 'Waiting to start…'
+            : runVoice
+              ? "Separating the singer's voice and analysing… this takes about as long as the song."
+              : 'Analysing the audio…'
+        )
       );
     } else if (view.kind === 'failed') {
       section.appendChild(el('p', 'analysis-status error', `The last analysis failed: ${view.error}`));
@@ -135,6 +145,23 @@
     }
 
     if (view.kind !== 'running') {
+      const option = el('div', 'analysis-line');
+      const optionLabel = el('label');
+      const optionBox = el('input');
+      optionBox.type = 'checkbox';
+      optionBox.checked = voiceOnly;
+      optionBox.disabled = busy;
+      optionBox.addEventListener('change', () => {
+        voiceOnly = optionBox.checked;
+      });
+      optionLabel.appendChild(optionBox);
+      optionLabel.appendChild(document.createTextNode(" Follow the singer's voice only for the melody"));
+      option.appendChild(optionLabel);
+      option.appendChild(
+        el('p', 'analysis-sub', 'Slower: takes about as long as the song. Use it when the melody picks up instruments or backing singers.')
+      );
+      section.appendChild(option);
+
       const label = view.kind === 'idle' ? 'Analyse this song' : 'Analyse again';
       const button = el('button', 'btn btn-small', busy ? 'Starting…' : label);
       button.type = 'button';
@@ -287,7 +314,13 @@
         row.appendChild(el('p', 'analysis-sub warn', 'Applying replaces any melody saved for this song.'));
       }
       row.appendChild(
-        el('p', 'analysis-sub', 'Rough draft: it follows the main line only. Listen with the piano view and fix it in the editor.')
+        el(
+          'p',
+          'analysis-sub',
+          result.melodySource === 'voice'
+            ? "Rough draft from the singer's voice only. Listen with the piano view and fix it in the editor."
+            : "Rough draft: it follows the loudest line, which may include instruments. Tick \"Follow the singer's voice only\" and analyse again for the singing alone."
+        )
       );
       lines.appendChild(row);
     }
@@ -386,11 +419,16 @@
 
   async function start() {
     reviewing = false;
+    runVoice = voiceOnly;
     busy = true;
     say('');
     render();
     try {
-      const { ok, status, data } = await api(base, { method: 'POST' });
+      const { ok, status, data } = await api(base, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voiceOnly }),
+      });
       busy = false;
       if (ok || status === 409) {
         const run = data.run;
@@ -414,6 +452,7 @@
       section.hidden = false;
       const latest = (data.runs || [])[0];
       if (latest && (latest.status === 'queued' || latest.status === 'running')) {
+        runVoice = Boolean(latest.options && latest.options.voiceOnly);
         poll(latest._id);
         return;
       }
