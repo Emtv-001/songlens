@@ -1,7 +1,6 @@
 // How a song's key is shown: just the note you hear as "do" (C, C#, D, Eb, E, F, F#, G, Ab, A,
 // Bb, B), without the words major or minor. The key is saved as its main note plus major or
-// minor, so for a minor key this works out the "do" note from the setting
-// "In minor keys, the first note is called" (la by default: the do note is 3 half steps up).
+// minor, so for a minor key the "do" note is 3 half steps up (the first note of a minor scale is "la").
 const KeyNames = (() => {
   const NAMES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
 
@@ -10,11 +9,7 @@ const KeyNames = (() => {
   }
 
   function minorBase() {
-    try {
-      return localStorage.getItem('songlens.minorBase') === 'do' ? 'do' : 'la';
-    } catch (err) {
-      return 'la';
-    }
+    return 'la';
   }
 
   // The note heard as "do" for a saved key.

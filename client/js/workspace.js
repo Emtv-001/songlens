@@ -20,7 +20,6 @@ const romanEl = document.getElementById('now-roman');
 const solfaEl = document.getElementById('now-solfa');
 const noteEl = document.getElementById('now-note');
 const noteSolfaEl = document.getElementById('now-note-solfa');
-const minorBaseEl = document.getElementById('minor-base');
 const transposeDownEl = document.getElementById('transpose-down');
 const transposeUpEl = document.getElementById('transpose-up');
 const transposeResetEl = document.getElementById('transpose-reset');
@@ -123,13 +122,9 @@ function setTranspose(semitones) {
   applyKeySound();
 }
 
-// "la" (la-based minor, the default) or "do" (do-based minor).
+// The standard way: the first note of a minor scale is "la", so "do" is 3 half steps higher.
 function getMinorBase() {
-  try {
-    return localStorage.getItem('songlens.minorBase') === 'do' ? 'do' : 'la';
-  } catch (err) {
-    return 'la';
-  }
+  return 'la';
 }
 
 // What to write under each note on the staff: "solfege", "name" or "none".
@@ -145,14 +140,6 @@ function getStaffLabels() {
 function saveStaffLabels(value) {
   try {
     localStorage.setItem('songlens.staffLabels', value);
-  } catch (err) {
-    // The setting just will not be remembered.
-  }
-}
-
-function saveMinorBase(value) {
-  try {
-    localStorage.setItem('songlens.minorBase', value);
   } catch (err) {
     // The setting just will not be remembered.
   }
@@ -446,12 +433,6 @@ ViewOptions.mount(
 staffLabelsEl.value = getStaffLabels();
 staffLabelsEl.addEventListener('change', () => {
   saveStaffLabels(staffLabelsEl.value);
-  if (workspace.clock) buildViews();
-});
-
-minorBaseEl.value = getMinorBase();
-minorBaseEl.addEventListener('change', () => {
-  saveMinorBase(minorBaseEl.value);
   if (workspace.clock) buildViews();
 });
 
