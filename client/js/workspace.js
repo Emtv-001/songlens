@@ -25,6 +25,11 @@ const transposeDownEl = document.getElementById('transpose-down');
 const transposeUpEl = document.getElementById('transpose-up');
 const transposeResetEl = document.getElementById('transpose-reset');
 const transposeLabelEl = document.getElementById('transpose-label');
+const transposeSoundEl = document.getElementById('transpose-sound');
+const transposeNoteEl = document.getElementById('transpose-note');
+// Plays the recording in the chosen key too (see key-shifter.js). null when the browser can't.
+const shifter = KeyShifter.supported() ? KeyShifter.create(audio, fetchAudioUrl) : null;
+let keySoundProblem = shifter ? '' : 'unsupported';
 
 const songId = new URLSearchParams(window.location.search).get('id');
 
@@ -75,16 +80,39 @@ function updateTransposeUi() {
   let text = n === 0 ? 'Original key' : `${n > 0 ? '+' : ''}${n} half step${Math.abs(n) === 1 ? '' : 's'}`;
 
   if (original.keyPc !== null && original.keyPc !== undefined) {
-    const modeText = original.mode ? ` ${original.mode}` : '';
-    const from = TimelineUtils.pcName(original.keyPc, Theory.usesFlats(original.keyPc, original.mode));
-    const to = TimelineUtils.pcName(workspace.display.keyPc, displayFlats());
-    text += n === 0 ? ` (${from}${modeText})` : ` (${from} → ${to}${modeText})`;
+    const from = KeyNames.label(original.keyPc, original.mode);
+    const to = KeyNames.label(workspace.display.keyPc, workspace.display.mode);
+    text += n === 0 ? ` (${from})` : ` (${from} → ${to})`;
   }
 
   transposeLabelEl.textContent = text;
   transposeDownEl.disabled = n <= -11;
   transposeUpEl.disabled = n >= 11;
   transposeResetEl.disabled = n === 0;
+  updateTransposeNote();
+}
+
+function updateTransposeNote() {
+  transposeNoteEl.textContent = KeyShifter.describe({
+    on: transposeSoundEl.checked,
+    transpose: workspace.transpose,
+    problem: keySoundProblem,
+  });
+}
+
+// Makes the sound follow the chosen key (when the tickbox is on).
+async function applyKeySound() {
+  if (!shifter) {
+    updateTransposeNote();
+    return;
+  }
+  const shift = transposeSoundEl.checked ? KeyShifter.soundShift(workspace.transpose) : 0;
+  if (shift !== 0 && !shifter.ready()) {
+    keySoundProblem = 'loading';
+    updateTransposeNote();
+  }
+  keySoundProblem = await shifter.set(shift);
+  updateTransposeNote();
 }
 
 function setTranspose(semitones) {
@@ -92,6 +120,7 @@ function setTranspose(semitones) {
   refreshDisplay();
   if (workspace.clock) buildViews();
   else updateTransposeUi();
+  applyKeySound();
 }
 
 // "la" (la-based minor, the default) or "do" (do-based minor).
@@ -216,11 +245,12 @@ function renderSongMeta() {
   const keyText =
     keyChanges.length >= 2
       ? keyChanges
-          .map((k) => `${TimelineUtils.pcName(k.keyPc, Theory.usesFlats(k.keyPc, k.mode))} ${k.mode}`)
+          .map((k) => KeyNames.label(k.keyPc, k.mode))
+          .filter((name, i, all) => i === 0 || name !== all[i - 1])
           .join(' → ')
       : t.keyPc === null || t.keyPc === undefined
       ? 'not set'
-      : `${TimelineUtils.pcName(t.keyPc, displayFlats())}${t.mode ? ` ${t.mode}` : ''}`;
+      : KeyNames.label(t.keyPc, t.mode);
   const tempoText = t.bpm ? `${t.bpm} BPM` : 'not set';
   const items = [
     ['Key', keyText],
@@ -383,7 +413,7 @@ async function init() {
 // and resume from the same spot.
 let refreshing = false;
 audio.addEventListener('error', async () => {
-  if (refreshing || !audio.src) return;
+  if (refreshing || !audio.src || (shifter && shifter.testing())) return;
   refreshing = true;
   const position = audio.currentTime;
   const wasPlaying = !audio.paused;
@@ -429,12 +459,36 @@ transposeDownEl.addEventListener('click', () => setTranspose(workspace.transpose
 transposeUpEl.addEventListener('click', () => setTranspose(workspace.transpose + 1));
 transposeResetEl.addEventListener('click', () => setTranspose(0));
 
+function getKeySound() {
+  try {
+    return localStorage.getItem('songlens.keySound') !== 'off';
+  } catch (err) {
+    return true;
+  }
+}
+
+function saveKeySound(on) {
+  try {
+    localStorage.setItem('songlens.keySound', on ? 'on' : 'off');
+  } catch (err) {
+    // the choice is just not remembered
+  }
+}
+
+transposeSoundEl.checked = getKeySound();
+transposeSoundEl.addEventListener('change', () => {
+  saveKeySound(transposeSoundEl.checked);
+  applyKeySound();
+});
+
 speed.addEventListener('change', () => {
   audio.playbackRate = parseFloat(speed.value);
+  if (shifter) shifter.refresh();
 });
 
 audio.addEventListener('loadedmetadata', () => {
   audio.playbackRate = parseFloat(speed.value);
+  if (shifter) shifter.refresh();
 });
 
 init();

@@ -86,7 +86,10 @@
           <span class="transpose-label" id="transpose-label" role="status">Original key</span>
         </div>
         <p class="transpose-note">
-          This only changes what you see here. The recording sounds the same, and your saved chords are not changed.
+          <label><input type="checkbox" id="transpose-sound" checked /> Play the recording in this key too</label>
+        </p>
+        <p class="transpose-note" id="transpose-note">
+          The recording plays in its original key. Your saved chords are not changed.
         </p>
 
         <div class="solfa-row">
@@ -133,6 +136,7 @@
     <script src="/js/clock.js"></script>
     <script src="/js/timeline-utils.js"></script>
     <script src="/js/theory.js"></script>
+    <script src="/js/key-names.js"></script>
     <script src="/js/views/chord-view.js"></script>
     <script src="/js/views/chord-summary-view.js"></script>
     <script src="/js/views/melody-view.js"></script>
@@ -140,7 +144,8 @@
     <script src="/js/views/piano-view.js"></script>
     <script src="/js/views/lyrics-view.js"></script>
     <script src="/js/editor.js"></script>
-    <script src="/js/view-options.js"></script><script src="/js/workspace.js"></script>
+    <script src="/js/view-options.js"></script>    <script src="/js/key-shifter.js"></script>
+<script src="/js/workspace.js"></script>
     <script src="/js/analysis-panel.js"></script>
       <script src="/js/page-nav.js"></script>
     <script src="/js/editor-jump.js"></script>

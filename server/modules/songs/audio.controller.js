@@ -3,6 +3,7 @@ const { pipeline } = require('stream');
 const mongoose = require('mongoose');
 const Song = require('../../models/Song');
 const storage = require('../../storage');
+const voiceTracks = require('../../jobs/voiceTracks');
 const { createSniffer } = require('../../utils/audioType');
 const { createSignedPath, verifySignature } = require('../../utils/signedUrl');
 const { parseRange } = require('../../utils/range');
@@ -86,6 +87,11 @@ async function uploadAudio(req, res, next) {
     if (oldKey) {
       await storage.remove(oldKey).catch(() => {});
     }
+
+    // Prepare the singer's voice track in the background (see jobs/voiceWorker.js).
+    voiceTracks
+      .enqueue(song)
+      .catch((err) => console.error('Could not queue the voice track:', err.message));
 
     const output = song.toObject();
     delete output.audio.storageKey;

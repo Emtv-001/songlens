@@ -1,0 +1,6 @@
+soundtouch-processor.js is the unmodified file .dist/soundtouch-processor.js from the npm package
+@soundtouchjs/audio-worklet 2.1.1 (https://github.com/cutterbl/soundtouchjs-audio-worklet).
+
+SoundTouch JS audio processing library
+Copyright (c) Steve 'Cutter' Blades
+Licensed under the Mozilla Public License, v. 2.0. You can obtain a copy at https://mozilla.org/MPL/2.0/.

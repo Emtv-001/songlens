@@ -1,5 +1,6 @@
 const Song = require('../models/Song');
 const AnalysisRun = require('../models/AnalysisRun');
+const voiceWorker = require('./voiceWorker');
 // ANALYSIS_ENGINE=placeholder in .env switches back to the fake analyzer (no Python needed).
 const analyzer =
   process.env.ANALYSIS_ENGINE === 'placeholder'
@@ -85,11 +86,13 @@ function start() {
   timer = setInterval(tick, POLL_MS);
   timer.unref();
   console.log(`Analysis worker started (checks every ${POLL_MS / 1000}s).`);
+  voiceWorker.start();
 }
 
 function stop() {
   if (timer) clearInterval(timer);
   timer = null;
+  voiceWorker.stop();
 }
 
 module.exports = { start, stop, tick };

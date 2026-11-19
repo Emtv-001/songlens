@@ -6,6 +6,8 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { pipeline } = require('stream/promises');
 const storage = require('../../storage');
+const VoiceTrack = require('../../models/VoiceTrack');
+const voiceTracks = require('../voiceTracks');
 
 const ROOT = path.join(__dirname, '../../..');
 const SCRIPT = path.join(ROOT, 'analysis', 'analyze.py');
@@ -154,6 +156,50 @@ function friendly(message) {
   return message;
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Puts the singer's voice for this song into voiceFile: from the stored voice track when there
+// is one (waiting while it is being prepared), otherwise by separating it now.
+async function getVoiceFile(song, audioFile, voiceFile) {
+  const key = song.audio.storageKey;
+  const deadline = Date.now() + SEPARATE_TIMEOUT_MS;
+  const workerOn = process.env.VOICE_WORKER !== 'off' && process.env.ANALYSIS_ENGINE !== 'placeholder';
+  for (;;) {
+    const track = await VoiceTrack.findOne({ songId: song._id, audioKey: key });
+    if (!track || track.status === 'failed') break;
+    if (track.status === 'ready') {
+      try {
+        await voiceTracks.fetchTo(track, voiceFile);
+        return;
+      } catch (err) {
+        console.error('Could not read the stored voice track:', err.message);
+        break;
+      }
+    }
+    if ((track.status === 'queued' && !workerOn) || Date.now() > deadline) break;
+    await sleep(3000);
+  }
+  await runSeparate(audioFile, voiceFile);
+  // keep it for next time (a problem here must not fail the analysis)
+  await voiceTracks.storeVoice(song, voiceFile).catch(() => {});
+}
+
+// Separates the singer's voice from the song's audio into the local file `output`.
+async function separateSongVoice(song, output) {
+  const key = song.audio && song.audio.storageKey;
+  const ext = EXTENSIONS[song.audio && song.audio.mimeType] || '.audio';
+  const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'songlens-sep-'));
+  const file = path.join(dir, 'audio' + ext);
+  try {
+    await pipeline(storage.createReadStream(key), fs.createWriteStream(file));
+    await runSeparate(file, output);
+  } finally {
+    await fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 async function analyze(song, run) {
   const key = song.audio && song.audio.storageKey;
   const ext = EXTENSIONS[song.audio && song.audio.mimeType] || '.audio';
@@ -166,7 +212,7 @@ async function analyze(song, run) {
       // The voice is separated while the speed, key and chords are analysed, then the melody
       // is found in the separated voice.
       const voiceFile = path.join(dir, 'voice.wav');
-      const [base] = await Promise.all([runPython([file, '--no-melody']), runSeparate(file, voiceFile)]);
+      const [base] = await Promise.all([runPython([file, '--no-melody']), getVoiceFile(song, file, voiceFile)]);
       const melody = await runPython(['--melody-only', voiceFile]);
       const { engine, ...result } = { ...base, ...melody };
       return { engine, result };
@@ -178,4 +224,4 @@ async function analyze(song, run) {
   }
 }
 
-module.exports = { analyze };
+module.exports = { analyze, separateSongVoice };

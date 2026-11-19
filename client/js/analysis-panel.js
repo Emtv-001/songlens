@@ -18,6 +18,7 @@
   let busy = false;
   let voiceOnly = false; // the tickbox: follow the singer's voice only
   let runVoice = false; // the run being waited for is a voice-only run
+  let voiceStatus = 'none'; // the song's voice track: none | preparing | ready | failed
   let reviewing = false; // an applied result stays folded away until the owner opens it
   let message = '';
   let messageIsError = false;
@@ -40,8 +41,7 @@
   }
 
   function keyName(keyPc, mode) {
-    const flats = Theory.usesFlats(keyPc, mode);
-    return `${TimelineUtils.pcName(keyPc, flats)} ${mode}`;
+    return KeyNames.label(keyPc, mode);
   }
 
   function clock(seconds) {
@@ -158,7 +158,7 @@
       optionLabel.appendChild(document.createTextNode(" Follow the singer's voice only for the melody"));
       option.appendChild(optionLabel);
       option.appendChild(
-        el('p', 'analysis-sub', 'Slower: takes about as long as the song. Use it when the melody picks up instruments or backing singers.')
+        el('p', 'analysis-sub', voiceHint())
       );
       section.appendChild(option);
 
@@ -214,7 +214,8 @@
       row.appendChild(label);
       const alternatives = (result.keyAlternatives || [])
         .filter((a) => Number.isInteger(a.keyPc) && a.mode)
-        .map((a) => keyName(a.keyPc, a.mode));
+        .map((a) => keyName(a.keyPc, a.mode))
+        .filter((name, i, all) => all.indexOf(name) === i && name !== keyName(result.keyPc, result.mode));
       if (alternatives.length) row.appendChild(el('p', 'analysis-sub', `Other possible keys: ${alternatives.join(', ')}`));
       const changes = keyChangeText(result);
       if (changes) {
@@ -417,6 +418,31 @@
     render();
   }
 
+function voiceHint() {
+    if (voiceStatus === 'ready') return 'The voice track is ready, so this takes only a few seconds.';
+    if (voiceStatus === 'preparing') {
+      return 'Preparing the voice track in the background. You can already start; it will use it when it is ready.';
+    }
+    return 'Slower: takes about as long as the song. Use it when the melody picks up instruments or backing singers.';
+  }
+
+  // While the voice track is being prepared, check now and then so the hint updates by itself.
+  async function watchVoice() {
+    for (let i = 0; i < 120 && voiceStatus === 'preparing'; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+      try {
+        const { ok, data } = await api(base);
+        const next = ok && data.voice && data.voice.status;
+        if (next && next !== voiceStatus) {
+          voiceStatus = next;
+          if (view.kind !== 'running' && !busy) render();
+        }
+      } catch (err) {
+        // try again at the next check
+      }
+    }
+  }
+
   async function start() {
     reviewing = false;
     runVoice = voiceOnly;
@@ -450,6 +476,8 @@
       const { ok, data } = await api(base);
       if (!ok) return; // not signed in, or not allowed to analyse this song
       section.hidden = false;
+      voiceStatus = (data.voice && data.voice.status) || 'none';
+      if (voiceStatus === 'preparing') watchVoice();
       const latest = (data.runs || [])[0];
       if (latest && (latest.status === 'queued' || latest.status === 'running')) {
         runVoice = Boolean(latest.options && latest.options.voiceOnly);

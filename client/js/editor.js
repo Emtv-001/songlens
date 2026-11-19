@@ -539,10 +539,10 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
     keySelectHolder.replaceChildren(
       selectEl(
         'Key',
-        [['', 'not set'], ...NOTE_OPTIONS],
-        draft.keyPc === null ? '' : String(draft.keyPc),
+        [['', 'not set'], ...KeyNames.NAMES.map((name, i) => [String(i), name])],
+        draft.keyPc === null ? '' : String(KeyNames.doPc(draft.keyPc, draft.mode)),
         (v) => {
-          draft.keyPc = v === '' ? null : parseInt(v, 10);
+          draft.keyPc = v === '' ? null : KeyNames.rootFor(parseInt(v, 10), draft.mode);
           markDirty();
         }
       )
@@ -557,7 +557,9 @@ function createEditor({ container, audio, songId, timeline, onSaved }) {
         ],
         draft.mode || '',
         (v) => {
+          const home = draft.keyPc === null ? null : KeyNames.doPc(draft.keyPc, draft.mode);
           draft.mode = v === '' ? null : v;
+          if (home !== null) draft.keyPc = KeyNames.rootFor(home, draft.mode); // the do note stays
           markDirty();
         }
       )

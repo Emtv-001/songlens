@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Song = require('../../models/Song');
 const AnalysisRun = require('../../models/AnalysisRun');
+const voiceTracks = require('../../jobs/voiceTracks');
 const SongTimeline = require('../../models/SongTimeline');
 const { QUALITIES } = require('../../utils/validateTimeline');
 
@@ -116,7 +117,8 @@ async function listRuns(req, res, next) {
       .select('-result')
       .sort({ createdAt: -1 })
       .limit(20);
-    res.json({ runs });
+    const voice = await voiceTracks.statusFor(song);
+    res.json({ runs, voice });
   } catch (err) {
     next(err);
   }
