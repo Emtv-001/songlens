@@ -2,7 +2,8 @@
 // Bb, B), without the words major or minor. The key is saved as its main note plus major or
 // minor, so for a minor key the "do" note is 3 half steps up (the first note of a minor scale is "la").
 const KeyNames = (() => {
-  const NAMES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+  // Black keys have two names, so both are shown (for example Bb/A#).
+  const NAMES = ['C', 'C#/Db', 'D', 'Eb/D#', 'E', 'F', 'F#/Gb', 'G', 'Ab/G#', 'A', 'Bb/A#', 'B'];
 
   function wrap(pc) {
     return ((pc % 12) + 12) % 12;
