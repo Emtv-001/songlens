@@ -1,8 +1,8 @@
-// Lets the listener choose what each view shows: the piano can show the chords, the melody,
-// both or nothing, and the other views can be shown or hidden. Choices are remembered in this
+// Lets the listener choose what each view shows: the piano can show the chords, the melody
+// or nothing, and the other views can be shown or hidden. Choices are remembered in this
 // browser only.
 const ViewOptions = (() => {
-  const DEFAULTS = { piano: 'both', chords: 'compact', melody: 'show', staff: 'show', lyrics: 'show' };
+  const DEFAULTS = { piano: 'chords', chords: 'compact', melody: 'show', staff: 'show', lyrics: 'show' };
   const LABELS = {
     piano: 'Piano shows',
     chords: 'Show chords as',
@@ -17,9 +17,8 @@ const ViewOptions = (() => {
       ['hide', 'Hide'],
     ],
     piano: [
-      ['both', 'Chords and melody'],
-      ['chords', 'Chords only'],
-      ['melody', 'Melody only'],
+      ['chords', 'Chords'],
+      ['melody', 'Melody'],
       ['none', 'Nothing (plain keyboard)'],
     ],
     show: [

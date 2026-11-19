@@ -1,6 +1,6 @@
 // Interactive piano (C3 to B5). Highlights the notes of the active chord (teal)
 // and the current melody note (coral). The listener can choose to see the chords, the
-// melody, both or nothing (see ViewOptions); the keyboard itself always stays.
+// melody or nothing (see ViewOptions); the keyboard itself always stays.
 // Reacts only to the shared clock; clicking or tapping a key plays that note.
 // `flats` chooses Bb over A# when naming notes.
 function createPianoView(container, notesLabel, chords, melody, flats) {
@@ -29,9 +29,9 @@ function createPianoView(container, notesLabel, chords, melody, flats) {
     return shown;
   }
 
-  const choice = typeof ViewOptions !== 'undefined' ? ViewOptions.get('piano') : 'both';
-  const showChords = choice === 'both' || choice === 'chords';
-  const showMelody = choice === 'both' || choice === 'melody';
+  const choice = typeof ViewOptions !== 'undefined' ? ViewOptions.get('piano') : 'chords';
+  const showChords = choice === 'chords';
+  const showMelody = choice === 'melody';
 
   const keys = new Map();
   let activeIndex = -1;
