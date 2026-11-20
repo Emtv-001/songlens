@@ -32,7 +32,7 @@ function toTimelineChords(list) {
       end: c.end,
       root: c.root,
       quality: c.quality,
-      bass: null,
+      bass: Number.isInteger(c.bass) && c.bass >= 0 && c.bass <= 11 ? c.bass : null,
     });
   }
   return out;
