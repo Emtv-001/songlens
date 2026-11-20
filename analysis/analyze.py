@@ -442,10 +442,68 @@ def estimate_chords(x, times, chroma, energy, key_sections, key_conf):
     return chords
 
 
+# chord types beyond the plain triad: semitones above the root, and how much each note weighs
+CHORD_TYPES = (
+    ("maj", (0, 4, 7)),
+    ("min", (0, 3, 7)),
+    ("7", (0, 4, 7, 10)),
+    ("maj7", (0, 4, 7, 11)),
+    ("min7", (0, 3, 7, 10)),
+    ("sus2", (0, 2, 7)),
+    ("sus4", (0, 5, 7)),
+    ("dim", (0, 3, 6)),
+    ("aug", (0, 4, 8)),
+)
+TYPE_NOTE_WEIGHT = {0: 1.0, 2: 0.8, 3: 0.9, 4: 0.9, 5: 0.8, 6: 0.8, 7: 0.8, 8: 0.8, 10: 0.5, 11: 0.5}
+TYPE_MARGIN = 0.03  # a richer chord must fit the sound this much better than the plain triad
+TYPE_MIN_FRAMES = 3
+
+
+def refine_chord_types(chords, times, chroma):
+    """Looks at the notes actually sounding inside each chord and upgrades a plain major or minor
+    chord to 7, maj7, m7, sus2, sus4, dim or aug only when that fits clearly better.
+    The timing of every chord stays as it was found."""
+    templates = {}
+    for root in range(12):
+        for quality, intervals in CHORD_TYPES:
+            vec = np.zeros(12)
+            for interval in intervals:
+                vec[(root + interval) % 12] = TYPE_NOTE_WEIGHT[interval]
+            templates[(root, quality)] = vec / np.linalg.norm(vec)
+
+    for chord in chords:
+        length = chord["end"] - chord["start"]
+        trim = 0.15 * length if length >= 0.8 else 0.0  # skip the moments when the chord changes
+        inside = (times >= chord["start"] + trim) & (times < chord["end"] - trim)
+        if int(inside.sum()) < TYPE_MIN_FRAMES:
+            continue
+        mean = chroma[inside].mean(axis=0)
+        norm = np.linalg.norm(mean)
+        if norm < 1e-9:
+            continue
+        mean = mean / norm
+        base = float(mean @ templates[(chord["root"], chord["quality"])])
+        # richer chords hold a plain chord inside them (Cmaj7 contains Em), so every root is tried
+        best, best_score = None, base + TYPE_MARGIN
+        for root in range(12):
+            for quality, _ in CHORD_TYPES:
+                if quality in ("maj", "min"):
+                    continue
+                score = float(mean @ templates[(root, quality)])
+                if score >= best_score:
+                    best, best_score = (root, quality), score + 1e-9
+        if best:
+            chord["root"], chord["quality"] = best
+    return chords
+
+
+MINOR_LIKE = ("min", "min7", "dim")
+
+
 def chord_class(chord):
     """Chords that are easily mistaken for each other share a class: a minor chord and its relative
     major (Fm and A-flat, Gm and B-flat, Cm and E-flat) count as the same."""
-    return chord["root"] if chord["quality"] == "maj" else (chord["root"] + 3) % 12
+    return (chord["root"] + 3) % 12 if chord["quality"] in MINOR_LIKE else chord["root"]
 
 
 def class_hist(chords, t_from, t_to):
@@ -768,6 +826,7 @@ def analyze(path, melody_path=None, skip_melody=False):
     times, chroma, energy = frame_chroma(x)
     key_sections = estimate_key_sections(times, chroma, energy, (key_pc, mode))
     chords = estimate_chords(x, times, chroma, energy, key_sections, key_conf)
+    chords = refine_chord_types(chords, times, chroma)
     chord_sections = find_chord_sections(chords)
     melody_source = "mix"
     if skip_melody:
