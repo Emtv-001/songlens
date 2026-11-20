@@ -290,13 +290,7 @@ function buildViews() {
       const { keyPc, mode } = keyAt(chord.start);
       return Theory.romanNumeral(chord, keyPc, mode);
     };
-    const sections = displaySections();
-    chordStripEl.classList.remove('chord-summary');
-    if (ViewOptions.get('chords') === 'compact' && sections.length > 0) {
-      add(createChordSummaryView(chordStripEl, sections, chords, seekTo, romanFor, flats).render);
-    } else {
-      add(createChordView(chordStripEl, chords, seekTo, romanFor, flats).render);
-    }
+    add(createChordSummaryView(chordStripEl, chords, lyrics, seekTo, romanFor, flats).render);
   } else {
     showEmpty(chordStripEl, 'No chords yet.');
   }
@@ -424,7 +418,7 @@ audio.addEventListener('error', async () => {
 });
 
 ViewOptions.mount(
-  { chords: chordStripEl, melody: melodyLaneEl, staff: staffEl, piano: pianoEl, lyrics: lyricsBoxEl },
+  { melody: melodyLaneEl, staff: staffEl, piano: pianoEl, lyrics: lyricsBoxEl },
   () => {
     if (workspace.clock) buildViews();
   }

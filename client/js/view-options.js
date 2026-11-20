@@ -2,20 +2,14 @@
 // or nothing, and the other views can be shown or hidden. Choices are remembered in this
 // browser only.
 const ViewOptions = (() => {
-  const DEFAULTS = { piano: 'chords', chords: 'compact', melody: 'show', staff: 'show', lyrics: 'show' };
+  const DEFAULTS = { piano: 'chords', melody: 'show', staff: 'show', lyrics: 'show' };
   const LABELS = {
     piano: 'Piano shows',
-    chords: 'Show chords as',
     melody: 'Melody bar',
     staff: 'Sheet music',
     lyrics: 'Lyrics',
   };
   const CHOICES = {
-    chords: [
-      ['compact', 'Short summary'],
-      ['detailed', 'Every chord'],
-      ['hide', 'Hide'],
-    ],
     piano: [
       ['chords', 'Chords'],
       ['melody', 'Melody'],
@@ -38,7 +32,7 @@ const ViewOptions = (() => {
   const elements = {};
 
   function get(name) {
-    const allowed = CHOICES[name === 'piano' || name === 'chords' ? name : 'show'].map((c) => c[0]);
+    const allowed = CHOICES[name === 'piano' ? name : 'show'].map((c) => c[0]);
     try {
       const value = localStorage.getItem(`songlens.view.${name}`);
       if (allowed.includes(value)) return value;
@@ -58,7 +52,7 @@ const ViewOptions = (() => {
 
   // Hides or shows the views that are switched off. The piano always stays on screen.
   function apply() {
-    ['chords', 'melody', 'staff', 'lyrics'].forEach((name) => {
+    ['melody', 'staff', 'lyrics'].forEach((name) => {
       if (elements[name]) elements[name].hidden = get(name) === 'hide';
     });
   }
@@ -75,7 +69,7 @@ const ViewOptions = (() => {
       row.append(document.createTextNode(`${LABELS[name]}: `));
       const select = document.createElement('select');
       select.dataset.view = name;
-      CHOICES[name === 'piano' || name === 'chords' ? name : 'show'].forEach(([value, text]) => {
+      CHOICES[name === 'piano' ? name : 'show'].forEach(([value, text]) => {
         const option = document.createElement('option');
         option.value = value;
         option.textContent = text;
