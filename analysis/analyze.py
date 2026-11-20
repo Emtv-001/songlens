@@ -23,8 +23,8 @@ TARGET_SR = 22050
 MAX_SECONDS = 180        # tempo and key use the middle of long songs
 CHORD_MAX_SECONDS = 600  # chords cover the song from the start, up to this length
 CHUNK_SECONDS = 60
-MIN_CHORD_SECONDS = 0.5
-SWITCH_PENALTY = 0.3
+MIN_CHORD_SECONDS = 0.25   # shorter chords are kept so passing chords show
+SWITCH_PENALTY = 0.2
 
 # key changes
 KEY_BLOCK_SECONDS = 4.0        # the key is judged on blocks of this length
