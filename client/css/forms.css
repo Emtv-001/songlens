@@ -3,11 +3,18 @@
   max-width: 420px;
   margin: 0 auto;
   padding: 2rem;
-  border-radius: 12px;
+  border-radius: 16px;
 }
 
 .card h1 {
   margin-top: 0;
+  font-size: 28px;
+}
+
+@media (max-width: 600px) {
+  .card h1 {
+    font-size: 22px;
+  }
 }
 
 .field {
@@ -17,7 +24,7 @@
 .field label {
   display: block;
   margin-bottom: 0.3rem;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.9rem;
 }
 
@@ -25,15 +32,15 @@
   width: 100%;
   padding: 0.7rem;
   border-radius: 8px;
-  border: 1px solid var(--soft-grey);
-  background: var(--midnight);
-  color: var(--ivory);
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--text);
   font-family: inherit;
   font-size: 1rem;
 }
 
 .field input:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--text);
   outline-offset: 1px;
 }
 
@@ -63,7 +70,7 @@
 }
 
 .card .alt a {
-  color: var(--teal);
+  color: var(--accent-text);
 }
 
 .account-line {

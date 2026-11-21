@@ -1,7 +1,7 @@
 .player-card {
   background: var(--surface);
   padding: 1.5rem;
-  border-radius: 12px;
+  border-radius: 16px;
   border-left: 4px solid var(--teal);
 }
 
@@ -11,7 +11,7 @@
 
 .player-card .artist {
   margin: 0 0 1rem;
-  color: var(--coral);
+  color: var(--muted);
 }
 
 .player-card audio {
@@ -30,16 +30,16 @@
 .speed-row select {
   padding: 0.35rem 0.5rem;
   border-radius: 8px;
-  border: 1px solid var(--soft-grey);
-  background: var(--midnight);
-  color: var(--ivory);
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--text);
   font-family: inherit;
 }
 
 .upload-card {
   background: var(--surface);
   padding: 1.5rem;
-  border-radius: 12px;
+  border-radius: 16px;
   margin-bottom: 2rem;
 }
 
@@ -75,8 +75,8 @@
 }
 
 .card-link {
-  color: var(--teal);
-  font-weight: 600;
+  color: var(--accent-text);
+  font-weight: 500;
 }
 
 .song-card .card-actions {
@@ -89,7 +89,7 @@
 .btn-danger {
   background: var(--error, #d96c73);
   border-color: var(--error, #d96c73);
-  color: var(--midnight);
+  color: var(--on-primary);
 }
 
 .btn-danger-outline {
@@ -120,9 +120,9 @@
 .edit-form textarea {
   padding: 0.5rem 0.6rem;
   border-radius: 8px;
-  border: 1px solid var(--soft-grey);
-  background: var(--midnight);
-  color: var(--ivory);
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--text);
   font-family: inherit;
   font-size: 0.95rem;
   width: 100%;

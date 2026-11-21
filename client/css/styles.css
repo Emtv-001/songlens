@@ -1,26 +1,19 @@
-:root {
-  --indigo: #253b80;
-  --teal: #46b9b0;
-  --coral: #f28a72;
-  --ivory: #f7f4ec;
-  --midnight: #10172a;
-  --surface: #19233d;
-  --soft-grey: #a9b2c5;
-  --white: #ffffff;
-  --success: #43a982;
-  --warning: #e6b45c;
-  --error: #d96c73;
-}
-
+/* Colours come from theme.css: dark by default, light with data-theme="light". */
 * {
   box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
 }
 
 body {
   margin: 0;
   font-family: 'Inter', system-ui, sans-serif;
-  background: var(--midnight);
-  color: var(--ivory);
+  font-weight: 400;
+  font-size: 16px;
+  background: var(--bg);
+  color: var(--text);
   line-height: 1.6;
   min-height: 100vh;
   display: flex;
@@ -31,36 +24,83 @@ h1,
 h2,
 h3,
 .brand {
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-family: 'Sora', 'Inter', sans-serif;
+  font-weight: 700;
+}
+
+h1 {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+h2 {
+  font-size: 28px;
+  line-height: 1.25;
+}
+
+@media (max-width: 600px) {
+  body {
+    font-size: 15px;
+  }
+
+  h1 {
+    font-size: 32px;
+  }
+
+  h2 {
+    font-size: 22px;
+  }
 }
 
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.5rem;
-  background: var(--surface);
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
 }
 
 .brand {
-  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
   font-size: 1.4rem;
-  color: var(--white);
+  color: var(--text);
   text-decoration: none;
 }
 
-.brand span {
-  color: var(--teal);
+/* the lens: a purple dot with a small glint */
+.brand::before {
+  content: '';
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.5rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #ffffff 0 11%, var(--primary) 14%);
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
 }
 
 .nav a {
-  color: var(--soft-grey);
+  color: var(--muted);
   text-decoration: none;
-  margin-left: 1rem;
+  font-weight: 500;
 }
 
 .nav a:hover {
-  color: var(--teal);
+  color: var(--text);
 }
 
 main {
@@ -72,49 +112,53 @@ main {
 }
 
 .hero h1 {
-  font-size: clamp(2rem, 6vw, 3.2rem);
   margin: 0 0 0.5rem;
 }
 
 .hero h1 em {
-  color: var(--coral);
+  color: var(--accent-text);
   font-style: normal;
 }
 
 .hero p {
-  color: var(--soft-grey);
+  color: var(--muted);
   font-size: 1.1rem;
   max-width: 560px;
 }
 
 .btn {
-  display: inline-block;
-  padding: 0.75rem 1.4rem;
-  border-radius: 8px;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.6rem 1.4rem;
+  border-radius: 999px;
+  border: 2px solid transparent;
   font-family: inherit;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 1rem;
+  line-height: 1.2;
   text-decoration: none;
   cursor: pointer;
-  background: var(--teal);
-  color: var(--midnight);
+  background: var(--primary);
+  color: var(--on-primary);
 }
 
 .btn:hover {
-  background: var(--coral);
+  background: var(--primary-hover);
 }
 
 .btn:focus-visible,
 a:focus-visible {
-  outline: 3px solid var(--coral);
+  outline: 3px solid var(--text);
   outline-offset: 2px;
 }
 
 .site-footer {
   text-align: center;
   padding: 1.5rem;
-  color: var(--soft-grey);
+  color: var(--muted);
   font-size: 0.85rem;
-  background: var(--surface);
+  background: var(--card);
+  border-top: 1px solid var(--border);
 }

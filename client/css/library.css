@@ -9,13 +9,13 @@
 
 .btn-outline {
   background: transparent;
-  color: var(--teal);
+  color: var(--accent-text);
   border: 2px solid var(--teal);
 }
 
 .btn-outline:hover {
   background: var(--teal);
-  color: var(--midnight);
+  color: var(--on-primary);
 }
 
 .link-hint {
@@ -24,5 +24,5 @@
 }
 
 .link-hint a {
-  color: var(--teal);
+  color: var(--accent-text);
 }

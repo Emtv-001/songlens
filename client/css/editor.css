@@ -1,21 +1,21 @@
 .editor-panel {
   margin-top: 1.5rem;
   background: var(--midnight);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 0.75rem 1rem 1rem;
 }
 
 .editor-panel > summary {
   cursor: pointer;
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-family: 'Sora', 'Inter', sans-serif;
   font-weight: 700;
   font-size: 1.05rem;
-  color: var(--teal);
+  color: var(--accent-text);
   padding: 0.3rem 0;
 }
 
 .editor-panel > summary:focus-visible {
-  outline: 3px solid var(--coral);
+  outline: 3px solid var(--text);
   outline-offset: 2px;
 }
 
@@ -25,7 +25,7 @@
 }
 
 .editor-group {
-  border: 1px solid #2b3858;
+  border: 1px solid var(--border);
   border-radius: 10px;
   margin: 1rem 0;
   padding: 0.6rem 0.8rem 0.8rem;
@@ -62,9 +62,9 @@
 .editor-panel input[type='text'] {
   padding: 0.4rem 0.5rem;
   border-radius: 8px;
-  border: 1px solid var(--soft-grey);
-  background: var(--surface);
-  color: var(--ivory);
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--text);
   font-family: inherit;
   font-size: 0.95rem;
   max-width: 100%;
@@ -72,7 +72,7 @@
 
 .editor-panel select:focus-visible,
 .editor-panel input:focus-visible {
-  outline: 3px solid var(--teal);
+  outline: 3px solid var(--text);
   outline-offset: 1px;
 }
 
@@ -89,7 +89,7 @@
 .editor-table th {
   text-align: left;
   color: var(--soft-grey);
-  font-weight: 600;
+  font-weight: 500;
   padding: 0.3rem 0.4rem;
   white-space: nowrap;
 }
@@ -115,9 +115,9 @@
 .chord-preview {
   display: inline-block;
   min-width: 3rem;
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-family: 'Sora', 'Inter', sans-serif;
   font-weight: 700;
-  color: var(--teal);
+  color: var(--accent-text);
 }
 
 .btn-tiny {
@@ -126,16 +126,16 @@
   border-radius: 6px;
   border: 1px solid var(--teal);
   background: transparent;
-  color: var(--teal);
+  color: var(--accent-text);
   font-family: inherit;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .btn-tiny:hover {
   background: var(--teal);
-  color: var(--midnight);
+  color: var(--on-primary);
 }
 
 .btn-tiny.danger {
@@ -146,11 +146,11 @@
 
 .btn-tiny.danger:hover {
   background: var(--error);
-  color: var(--midnight);
+  color: var(--on-primary);
 }
 
 .btn-tiny:focus-visible {
-  outline: 3px solid var(--coral);
+  outline: 3px solid var(--text);
   outline-offset: 2px;
 }
 
@@ -187,8 +187,8 @@
   padding: 0.75rem 1rem;
   margin-top: 1rem;
   background: var(--midnight, #10172a);
-  border-top: 1px solid rgba(169, 178, 197, 0.35);
-  box-shadow: 0 -6px 12px rgba(0, 0, 0, 0.35);
+  border-top: 1px solid var(--border);
+  box-shadow: var(--shadow);
 }
 
 .editor-savebar p {

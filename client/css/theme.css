@@ -1,0 +1,111 @@
+/* SongLens colours. Dark is the default; the light theme is switched on with data-theme="light". */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #121212;
+  --card: #1e1e1e;
+  --primary: #7c3aed;
+  --primary-hover: #6d28d9;
+  --text: #ffffff;
+  --muted: #bbbbbb;
+  --border: #333333;
+  --input: #2a2a2a;
+  --accent-text: #ffffff; /* links and small coloured text: purple is too dim on dark */
+  --shadow: none;
+
+  /* genre colours: only for genre tags and small dots */
+  --genre-gospel: #ffb800;
+  --genre-lofi: #00c2a8;
+  --genre-pop: #ff4d6d;
+  --genre-afrobeats: #ff6b1a;
+  --genre-hiphop: #7c3aed;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #fff8f0;
+  --card: #ffffff;
+  --primary: #7c3aed;
+  --primary-hover: #6d28d9;
+  --text: #121212;
+  --muted: #666666;
+  --border: #dddddd;
+  --input: #ffffff;
+  --accent-text: #6d28d9;
+  --shadow: 0 4px 16px rgba(18, 18, 18, 0.08);
+
+  --genre-gospel: #e6a800;
+  --genre-lofi: #009b87;
+  --genre-pop: #e8355a;
+  --genre-afrobeats: #ff5a00;
+  --genre-hiphop: #7c3aed;
+}
+
+:root {
+  --on-primary: #ffffff;
+  --piano-white: #ffffff;
+  --piano-black: #121212;
+
+  /* The names the pages already use, now pointing at the new colours. */
+  --midnight: var(--bg);
+  --surface: var(--card);
+  --ivory: var(--text);
+  --soft-grey: var(--muted);
+  --teal: var(--primary);
+  --coral: var(--primary-hover);
+  --indigo: var(--primary-hover);
+  --white: var(--text);
+  --error: var(--genre-pop);
+  --warning: var(--genre-gospel);
+  --success: var(--genre-lofi);
+}
+
+/* Smooth change while switching theme */
+html.theme-anim,
+html.theme-anim * {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, fill 0.3s ease,
+    stroke 0.3s ease !important;
+}
+
+/* Cards */
+.card,
+.song-card,
+.player-card,
+.upload-card {
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+/* Sun / moon button in the navbar */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  border-color: var(--primary);
+}
+
+.theme-toggle:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 2px;
+}
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

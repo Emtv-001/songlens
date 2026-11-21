@@ -1,6 +1,6 @@
 .piano-wrap {
   background: var(--midnight);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 0.75rem;
   overflow-x: auto;
 }
@@ -20,14 +20,14 @@
 }
 
 .piano-svg .key.white {
-  fill: var(--ivory);
-  stroke: #8a93a8;
+  fill: var(--piano-white);
+  stroke: var(--muted);
   stroke-width: 1;
 }
 
 .piano-svg .key.black {
-  fill: #0b0f1d;
-  stroke: #000;
+  fill: var(--piano-black);
+  stroke: var(--piano-black);
   stroke-width: 1;
 }
 
@@ -36,11 +36,13 @@
 }
 
 .piano-svg .key.black.chord {
-  fill: #2e8a82;
+  fill: var(--primary-hover);
 }
 
 .piano-svg .key.root {
-  fill: var(--coral);
+  fill: var(--primary-hover);
+  stroke: var(--text);
+  stroke-width: 2;
 }
 
 .piano-svg .key.bass {
@@ -52,7 +54,7 @@
 }
 
 .piano-svg .key-label {
-  fill: #55607a;
+  fill: var(--piano-black);
   font-size: 9px;
   font-family: 'Inter', sans-serif;
   pointer-events: none;
@@ -68,7 +70,7 @@
 .piano-svg rect.key.melody,
 .piano-svg rect.key.white.melody,
 .piano-svg rect.key.black.melody {
-  fill: var(--coral) !important;
-  stroke: var(--ivory);
+  fill: var(--primary-hover) !important;
+  stroke: var(--text);
   stroke-width: 2;
 }

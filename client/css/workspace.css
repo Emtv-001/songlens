@@ -7,7 +7,7 @@
 
 .now-box {
   background: var(--midnight);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 1rem 1.2rem;
 }
 
@@ -21,13 +21,13 @@
 
 .now-box .value {
   margin: 0.2rem 0 0;
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-family: 'Sora', 'Inter', sans-serif;
   font-size: 2.2rem;
   font-weight: 800;
 }
 
 .now-box .value.chord {
-  color: var(--teal);
+  color: var(--accent-text);
 }
 
 .section-title {
@@ -49,7 +49,7 @@
   position: relative;
   overflow-x: auto;
   background: var(--midnight);
-  border-radius: 12px;
+  border-radius: 16px;
 }
 
 .chord-track {
@@ -66,7 +66,7 @@
   border-radius: 8px;
   background: var(--indigo);
   color: var(--white);
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-family: 'Sora', 'Inter', sans-serif;
   font-weight: 700;
   font-size: 1.1rem;
   cursor: pointer;
@@ -75,17 +75,17 @@
 }
 
 .chord-block:hover {
-  background: #31509f;
+  background: var(--primary);
 }
 
 .chord-block.active {
   background: var(--teal);
-  color: var(--midnight);
+  color: var(--on-primary);
 }
 
 .chord-block:focus-visible,
 .lyric-line:focus-visible {
-  outline: 3px solid var(--coral);
+  outline: 3px solid var(--text);
   outline-offset: 2px;
 }
 
@@ -106,7 +106,7 @@
   max-height: 260px;
   overflow-y: auto;
   background: var(--midnight);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 0.5rem;
 }
 
@@ -145,8 +145,8 @@
 
 .lyrics-list li.active .lyric-line {
   background: var(--surface);
-  color: var(--coral);
-  font-weight: 600;
+  color: var(--accent-text);
+  font-weight: 500;
 }
 
 .hint {
@@ -184,7 +184,7 @@
 }
 
 .meta-chip strong {
-  color: var(--teal);
+  color: var(--accent-text);
 }
 .chord-block {
   display: flex;
@@ -198,12 +198,12 @@
 .chord-roman {
   font-family: 'Inter', sans-serif;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 500;
   opacity: 0.85;
 }
 
 .now-box .value.roman {
-  color: var(--coral);
+  color: var(--accent-text);
   font-size: 1.8rem;
 }
 
@@ -225,9 +225,9 @@
 .solfa-row select {
   padding: 0.3rem 0.5rem;
   border-radius: 8px;
-  border: 1px solid var(--soft-grey);
-  background: var(--midnight);
-  color: var(--ivory);
+  border: 1px solid var(--border);
+  background: var(--input);
+  color: var(--text);
   font-family: inherit;
 }
 .transpose-row {
@@ -250,7 +250,7 @@
   border-radius: 8px;
   border: 1px solid var(--teal);
   background: transparent;
-  color: var(--teal);
+  color: var(--accent-text);
   font-family: inherit;
   font-size: 1rem;
   font-weight: 700;
@@ -259,7 +259,7 @@
 
 .transpose-row button:hover:not(:disabled) {
   background: var(--teal);
-  color: var(--midnight);
+  color: var(--on-primary);
 }
 
 .transpose-row button:disabled {
@@ -268,12 +268,12 @@
 }
 
 .transpose-row button:focus-visible {
-  outline: 3px solid var(--coral);
+  outline: 3px solid var(--text);
   outline-offset: 2px;
 }
 
 .transpose-label {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--ivory);
 }
 
@@ -288,7 +288,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   background: var(--surface);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 0.5rem 0;
   margin-bottom: 1.25rem;
 }
@@ -300,8 +300,8 @@
     to bottom,
     transparent 0,
     transparent 11px,
-    rgba(169, 178, 197, 0.12) 11px,
-    rgba(169, 178, 197, 0.12) 12px
+    var(--border) 11px,
+    var(--border) 12px
   );
 }
 
@@ -326,7 +326,7 @@
 }
 
 .melody-note:focus-visible {
-  outline: 3px solid var(--coral);
+  outline: 3px solid var(--text);
   outline-offset: 2px;
 }
 
@@ -344,14 +344,14 @@
 .staff-wrap {
   display: flex;
   background: var(--surface);
-  border-radius: 12px;
+  border-radius: 16px;
   margin-bottom: 1.25rem;
   overflow: hidden;
 }
 
 .staff-clef {
   flex: 0 0 44px;
-  border-right: 1px solid rgba(169, 178, 197, 0.25);
+  border-right: 1px solid var(--border);
 }
 
 .staff-clef svg {
@@ -448,7 +448,7 @@
 
 .staff-chord-symbol {
   fill: var(--ivory);
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-family: 'Sora', 'Inter', sans-serif;
   font-weight: 800;
 }
 
@@ -479,5 +479,5 @@
 .staff-note-label {
   fill: var(--teal);
   font-family: 'Inter', sans-serif;
-  font-weight: 600;
+  font-weight: 500;
 }
