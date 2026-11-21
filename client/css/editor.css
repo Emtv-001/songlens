@@ -146,7 +146,7 @@
 
 .btn-tiny.danger:hover {
   background: var(--error);
-  color: var(--on-primary);
+  color: var(--on-danger);
 }
 
 .btn-tiny:focus-visible {

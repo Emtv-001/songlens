@@ -9,7 +9,7 @@
     .editor-jump input { width: 7rem; }
     .editor-jump-note { font-size: 0.85rem; color: var(--soft-grey, #a9b2c5); }
     .editor-group legend, .editor-panel > summary, .editor-group tbody tr { scroll-margin-top: 1rem; scroll-margin-bottom: 6rem; }
-    .editor-group tr.editor-row-flash td { background: rgba(70, 185, 176, 0.25); transition: background 0.4s; }
+    .editor-group tr.editor-row-flash td { background: rgba(124, 58, 237, 0.25); transition: background 0.4s; }
   `;
   document.head.appendChild(style);
 

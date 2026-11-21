@@ -23,8 +23,8 @@ function createChordSummaryView(container, chords, lyrics, onSeek, getSubLabel, 
       .chord-chip { display: inline-flex; flex-direction: column; align-items: center; min-width: 3.2rem; padding: 0.35rem 0.7rem; border-radius: 10px; background: var(--midnight, #10172a); color: var(--ivory, #f7f4ec); }
       .chord-chip .chord-name { font-weight: 700; font-size: 1.05rem; }
       .chord-chip .chord-roman { font-size: 0.75rem; color: var(--soft-grey, #a9b2c5); }
-      .chord-chip.now { background: var(--teal, #46b9b0); color: var(--midnight, #10172a); }
-      .chord-chip.now .chord-roman { color: var(--midnight, #10172a); }
+      .chord-chip.now { background: var(--teal, #7c3aed); color: var(--on-primary, #ffffff); }
+      .chord-chip.now .chord-roman { color: var(--on-primary, #ffffff); }
       .chord-section-bar { height: 3px; margin-top: 0.6rem; background: rgba(169, 178, 197, 0.25); border-radius: 2px; }
       .chord-section-bar i { display: block; height: 100%; width: 0; background: var(--teal, #46b9b0); border-radius: 2px; }
     `;

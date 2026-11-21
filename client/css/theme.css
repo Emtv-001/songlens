@@ -23,7 +23,7 @@
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --bg: #fff8f0;
+  --bg: #efe3d3;
   --card: #ffffff;
   --primary: #7c3aed;
   --primary-hover: #6d28d9;
@@ -43,6 +43,7 @@
 
 :root {
   --on-primary: #ffffff;
+  --on-danger: #121212;
   --piano-white: #ffffff;
   --piano-black: #121212;
 
@@ -54,7 +55,7 @@
   --teal: var(--primary);
   --coral: var(--primary-hover);
   --indigo: var(--primary-hover);
-  --white: var(--text);
+  --white: var(--on-primary);
   --error: var(--genre-pop);
   --warning: var(--genre-gospel);
   --success: var(--genre-lofi);
@@ -108,4 +109,10 @@ html.theme-anim * {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* Light mode: the navbar and footer sit on the page colour so everything blends */
+:root[data-theme='light'] .site-header,
+:root[data-theme='light'] .site-footer {
+  background: var(--bg);
 }

@@ -3,7 +3,7 @@
 (() => {
   const KEY = 'songlens.theme';
   const root = document.documentElement;
-  const COLOURS = { dark: '#121212', light: '#fff8f0' };
+  const COLOURS = { dark: '#121212', light: '#efe3d3' };
 
   function read() {
     try {
